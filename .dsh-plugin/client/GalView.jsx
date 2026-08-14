@@ -251,12 +251,16 @@ export function GalView({ useSession, inputActions, useScene, useHistory, useAss
   // 无进行中的工具/待回应才钉住（多步回合的工具阶段仍正常显示状态页）。
   const capturedQuiet = (Array.isArray(runningCalls) && runningCalls.length === 0)
     && (Array.isArray(pending) && pending.length === 0)
-  // 定稿节点已落地且与流式正文衔接：直接展示定稿行（等状态帧转分页）。
+  // 定稿节点已落地且与已显示的流式正文衔接：直接展示定稿行（等状态帧转分页）。
+  // 锚定可见前缀（capturedShown），与 measure 的衔接分支一致；定稿文本与流式全文可能有分段差异。
+  const capturedShown = streamedTypeRef.current !== null && typeof streamedTypeRef.current.shown === 'string'
+    ? streamedTypeRef.current.shown
+    : ''
   const capturedLanded = capturedQuiet
     && capturedLine !== null
     && lastLine !== null
     && lastLine.kind === 'assistant'
-    && lastLine.text.startsWith(capturedTarget)
+    && lastLine.text.startsWith(capturedShown !== '' ? capturedShown : capturedTarget)
   // 状态帧先到、定稿节点未落地：继续显示流式正文直到节点到达。
   const capturedPending = capturedQuiet
     && capturedLine !== null
@@ -311,10 +315,13 @@ export function GalView({ useSession, inputActions, useScene, useHistory, useAss
       // 必须先于恢复分支：完成窗口内的保存会把 lineKey 写成定稿节点键，
       // 恢复分支会误判成重挂载并按旧进度重置（第一页重打）。
       const streamed = streamedTypeRef.current
+      // 锚定「已打出的可见前缀」而非完整流式目标：真实运行时定稿节点文本
+      // 与流式全文可能存在分段差异（startsWith(target) 会失配导致第一页重打）。
       if (streamed !== null
         && typeof streamed.target === 'string'
         && streamed.target !== ''
-        && currentLine.text.startsWith(streamed.target)) {
+        && typeof streamed.shown === 'string'
+        && currentLine.text.startsWith(streamed.shown)) {
         streamedTypeRef.current = null
         const page = nextPages[0] ?? currentLine.text
         if (page.startsWith(streamed.shown)) {

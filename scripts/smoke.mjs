@@ -515,6 +515,38 @@ async function pageTestPhase1() {
   assert(!longSawEmpty, '长回复定稿不重打第一页（无闪空）')
   const pageOne = document.querySelector('.gv-dialogue-text')?.textContent ?? ''
   assert(pageOne.length > 0 && longReply.startsWith(pageOne), '定稿后第一页完整显示')
+  // 回归：真实运行时定稿节点文本与流式全文尾部存在分段差异——按已显示的
+  // 可见前缀衔接第一页（startsWith 全文目标会失配导致重打）。
+  const sharedBase = '完全相同的开头内容，用来撑满第一页之后继续延伸，让流式与定稿共享一个足够长的公共前缀。'.repeat(2)
+  const streamedText2 = sharedBase + '流式尾部的特有内容。'.repeat(6)
+  const finalText2 = sharedBase + '定稿尾部的不同内容。'.repeat(6)
+  window.__setSession({
+    sessionId: 'session-1',
+    nodes: [{ kind: 'user', seq: 80, content: [{ type: 'text', text: '分段测试' }], source: null }],
+    partial: { turn: 6, step: 1, blocks: [{ kind: 'text', text: streamedText2 }] },
+    running: true,
+    blank: false,
+  })
+  assert(await pollFor(() => (document.querySelector('.gv-dialogue-text')?.textContent ?? '').length >= 60, 20000), '分段流式打字已超过第一页容量')
+  window.__setSession({
+    sessionId: 'session-1',
+    nodes: [
+      { kind: 'user', seq: 80, content: [{ type: 'text', text: '分段测试' }], source: null },
+      { kind: 'assistant', seq: 81, turn: 6, step: 1, blocks: [{ kind: 'text', text: finalText2 }] },
+    ],
+    partial: null,
+    running: false,
+    blank: false,
+  })
+  let segSawEmpty = false
+  for (let i = 0; i < 40; i++) {
+    const t = document.querySelector('.gv-dialogue-text')?.textContent ?? ''
+    if (t === '') segSawEmpty = true
+    await sleep(30)
+  }
+  assert(!segSawEmpty, '分段差异定稿不重打第一页（无闪空）')
+  const segPage = document.querySelector('.gv-dialogue-text')?.textContent ?? ''
+  assert(segPage.length > 0 && finalText2.startsWith(segPage), '分段差异定稿后第一页衔接显示')
   // 状态触发翻页：模型尚无任何状态时，消息滞留超过固定时长仍保持显示。
   window.__setSession({
     sessionId: 'session-1',
