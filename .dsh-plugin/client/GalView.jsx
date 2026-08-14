@@ -199,7 +199,7 @@ export function GalView({ useSession, inputActions, useScene, useHistory, useAss
 
   // 流式打字进度快照：定稿转分页时据此无缝衔接第一页（不闪空、不重打）。
   // 只快照「有正文」的流式状态（状态页/玩家滞留不覆盖）；新回合开始时丢弃旧快照；
-  // 分页测量命中（定稿文本以快照目标为前缀）后才消费。
+  // 衔接命中后保留（不消费）——定稿后节点列表会短暂振荡回退，保留快照才能钉住回退窗口。
   const streamedTypeRef = useRef(null)
   const wasRunningRef = useRef(false)
   useEffect(() => {

@@ -249,7 +249,7 @@ export const CSS = `
   font-size: .7em; color: var(--gv-accent);
   animation: gv-pulse 1.4s ease-in-out infinite;
 }
-/* AI 状态行（思考中…/使用工具中…）：与对话文本同字号、次级色、轻微呼吸。 */
+/* AI 状态行（思考中…/编写代码中…）：与对话文本同字号、次级色、轻微呼吸。 */
 .gv-dtext-status {
   color: var(--gv-text-dim);
   letter-spacing: .04em;
@@ -530,6 +530,6 @@ export const CSS = `
 
 @media (prefers-reduced-motion: reduce) {
   [data-gal-view] .gv-el-character .gv-char { animation: none; }
-  [data-gal-view] .gv-dialogue-caret, [data-gal-view] .gv-dialogue-wait { animation: none; }
+  [data-gal-view] .gv-dialogue-caret { animation: none; }
 }
 `

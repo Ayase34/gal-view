@@ -146,7 +146,7 @@ function LiveSpeakerName({ el, line }) {
 /** 游戏模式实时台词：渲染进独立的「台词」元素（位置/尺寸/字号/颜色随元素属性）。
  * 点击 = Galgame 翻页：打字中追平当前页；已打完且存在下一页 → 显示下一页。
  * 省略号插在最后一个可见字符之后、尾随换行符之前（否则会排到空行行首）。
- * AI 运行期间在文本下方追加状态行：\n（思考中…）/（使用工具中…）。 */
+ * AI 运行期间在文本下方追加状态行：\n（思考中…）/（编写代码中…）。 */
 function LiveDialogueText({ el, type, running, pinned, onTextClick, hasNextPage, aiStatus }) {
   const bodyRef = useRef(null)
   useEffect(() => {
@@ -218,7 +218,7 @@ function SelectionOverlay({ el, onBeginGesture }) {
  * @param props.onSkip - 对话框点击（游戏模式）。
  * @param props.onTextClick - 台词文本框点击（翻页/追平）。
  * @param props.hasNextPage - 当前行是否还有下一页（显示「▼」提示）。
- * @param props.aiStatus - AI 运行状态文本（思考中/使用工具中；null = 不显示）。
+ * @param props.aiStatus - AI 运行状态文本（思考中/编写代码中；null = 不显示）。
  * @param props.onAction - 透明按钮功能回调（游戏模式；history/auto/skip/settings）。
  * @param props.autoOn - 自动播放开关状态（透明「自动」按钮的 is-on 视觉）。
  */

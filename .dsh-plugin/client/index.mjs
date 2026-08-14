@@ -140,7 +140,7 @@ function createSceneApi(sceneSource, history, historySource, storage, assetsSour
       })
     },
 
-    /** 实时更新设置（合并 + 白名单归一化；不写历史）。 */
+    /** 实时更新设置（浅合并进 settings；不写历史）。 */
     updateSettings(patch) {
       commit({
         ...current(),
@@ -423,7 +423,12 @@ export function apply(ctx) {
   const assetsSource = createObservable({ map: new Map() })
   const idb = createIdbAssets()
   void idb.getAll().then(records => {
-    if (records.length > 0) assetsSource.update({ map: new Map(records.map(record => [record.id, record])) })
+    // 合并而非替换：预设种子素材（同步种入内存镜像）可能尚未落库，替换会丢。
+    if (records.length > 0) {
+      const map = new Map(assetsSource.getSnapshot().map)
+      for (const record of records) map.set(record.id, record)
+      assetsSource.update({ map })
+    }
   }).catch(() => {})
   // 字体库：IndexedDB 持久 + @font-face 动态注册。
   const fontsSource = createObservable({ map: new Map() })
@@ -439,8 +444,11 @@ export function apply(ctx) {
   syncFontStyles()
   fontsSource.subscribe(syncFontStyles)
   void fontIdb.getAll().then(records => {
+    // 合并而非替换：预设种子字体（同步种入内存镜像）可能尚未落库，替换会丢。
     if (records.length > 0) {
-      fontsSource.update({ map: new Map(records.map(record => [record.id, record])) })
+      const map = new Map(fontsSource.getSnapshot().map)
+      for (const record of records) map.set(record.id, record)
+      fontsSource.update({ map })
       syncFontStyles()
     }
   }).catch(() => {})

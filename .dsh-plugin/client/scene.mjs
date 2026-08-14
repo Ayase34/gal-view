@@ -11,7 +11,7 @@
 // Element 公共字段：id/type/name/x/y/w/h/rotation/opacity/z/locked/hidden
 //   外观：background/borderColor/borderWidth/borderRadius/color/fontSize/text
 //   type 专属：character: { key, label, name, color }
-// 元素类型：background | character | dialogue | dialogue-text | text | rect | circle | button | decoration
+// 元素类型：background | character | dialogue | dialogue-text | speaker-name | action-button | text | rect | circle | button | decoration
 
 export const SCENE_VERSION = 1
 export const STAGE_W = 960
