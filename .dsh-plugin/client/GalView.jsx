@@ -317,12 +317,13 @@ export function GalView({ useSession, inputActions, useScene, useHistory, useAss
       const streamed = streamedTypeRef.current
       // 锚定「已打出的可见前缀」而非完整流式目标：真实运行时定稿节点文本
       // 与流式全文可能存在分段差异（startsWith(target) 会失配导致第一页重打）。
+      // 命中后保留快照（不置空）：定稿后节点列表会短暂回退（settled→running 振荡），
+      // 回退窗口靠 capturedPending 钉住正文；节点重新落地时再次衔接（幂等）。
       if (streamed !== null
         && typeof streamed.target === 'string'
         && streamed.target !== ''
         && typeof streamed.shown === 'string'
         && currentLine.text.startsWith(streamed.shown)) {
-        streamedTypeRef.current = null
         const page = nextPages[0] ?? currentLine.text
         if (page.startsWith(streamed.shown)) {
           setType({ target: page, shown: streamed.shown, done: streamed.shown === page })

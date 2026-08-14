@@ -547,6 +547,57 @@ async function pageTestPhase1() {
   assert(!segSawEmpty, '分段差异定稿不重打第一页（无闪空）')
   const segPage = document.querySelector('.gv-dialogue-text')?.textContent ?? ''
   assert(segPage.length > 0 && finalText2.startsWith(segPage), '分段差异定稿后第一页衔接显示')
+  // 回归：定稿后节点列表短暂回退（真实运行时的 settled→running 振荡，lastLine
+  // 一度回到玩家消息）再重新落地——不重定向打字机、不重打第一页。
+  const oscText = '振荡窗口的流式正文内容。'.repeat(6)
+  window.__setSession({
+    sessionId: 'session-1',
+    nodes: [{ kind: 'user', seq: 90, content: [{ type: 'text', text: '振荡测试' }], source: null }],
+    partial: { turn: 7, step: 1, blocks: [{ kind: 'text', text: oscText }] },
+    running: true,
+    blank: false,
+  })
+  assert(await pollFor(() => (document.querySelector('.gv-dialogue-text')?.textContent ?? '').length >= 60, 20000), '振荡回归流式打字超过第一页容量')
+  window.__setSession({
+    sessionId: 'session-1',
+    nodes: [
+      { kind: 'user', seq: 90, content: [{ type: 'text', text: '振荡测试' }], source: null },
+      { kind: 'assistant', seq: 91, turn: 7, step: 1, blocks: [{ kind: 'text', text: oscText }] },
+    ],
+    partial: null,
+    running: false,
+    blank: false,
+  })
+  await sleep(120)
+  // 节点列表回退：只剩玩家消息。
+  window.__setSession({
+    sessionId: 'session-1',
+    nodes: [{ kind: 'user', seq: 90, content: [{ type: 'text', text: '振荡测试' }], source: null }],
+    partial: null,
+    running: false,
+    blank: false,
+  })
+  await sleep(120)
+  // 节点重新落地。
+  window.__setSession({
+    sessionId: 'session-1',
+    nodes: [
+      { kind: 'user', seq: 90, content: [{ type: 'text', text: '振荡测试' }], source: null },
+      { kind: 'assistant', seq: 91, turn: 7, step: 1, blocks: [{ kind: 'text', text: oscText }] },
+    ],
+    partial: null,
+    running: false,
+    blank: false,
+  })
+  let oscSawEmpty = false
+  for (let i = 0; i < 40; i++) {
+    const t = document.querySelector('.gv-dialogue-text')?.textContent ?? ''
+    if (t === '') oscSawEmpty = true
+    await sleep(30)
+  }
+  assert(!oscSawEmpty, '定稿振荡回退不重打第一页（无闪空）')
+  const oscPage = document.querySelector('.gv-dialogue-text')?.textContent ?? ''
+  assert(oscPage.length > 0 && oscText.startsWith(oscPage), '定稿振荡回退后第一页衔接显示')
   // 状态触发翻页：模型尚无任何状态时，消息滞留超过固定时长仍保持显示。
   window.__setSession({
     sessionId: 'session-1',
