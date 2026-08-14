@@ -516,11 +516,13 @@ export function Editor({ scene, api, history, assetsMap, fontsMap, onExitEditor 
   /** 「导入图片」元素的文件选择：导入素材并应用到刚创建的元素。 */
   const onImportImage = e => {
     const files = e.target.files
+    // 先固化文件对象再清空 input：清空 value 会让 FileList 变为空（文件对象本身不受影响）。
+    const list = files === null ? [] : Array.from(files)
     e.target.value = ''
-    if (files === null || files.length === 0) return
+    if (list.length === 0) return
     const targetId = pendingImageElRef.current
     pendingImageElRef.current = null
-    void api.importAssets([...files]).then(result => {
+    void api.importAssets(list).then(result => {
       if (result.ids.length > 0 && targetId !== null) {
         const before = api.snapshotScene()
         api.updateElement(targetId, { image: result.ids[0] })

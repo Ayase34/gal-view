@@ -1073,6 +1073,32 @@ async function main() {
       const w = window.__galScene.getSnapshot().elements.find(e => e.id === window.__rectId).w
       window.__snapResults.push({ name: '拉伸越过舞台边缘不被钳制', ok: w > 360 })
     })
+    // 回归：「导入图片」菜单项——创建元素后自动选图并一步应用显示。
+    await page.evaluate(() => {
+      const btn = [...document.querySelectorAll('.gv-toolbar-group .gv-btn')].find(b => b.textContent.includes('添加元素'))
+      if (btn !== undefined) btn.click()
+    })
+    await page.waitForTimeout(120)
+    const chooserPromise = page.waitForEvent('filechooser')
+    await page.evaluate(() => {
+      const item = [...document.querySelectorAll('.gv-add-menu [role="menuitem"]')].find(b => b.textContent.includes('导入图片'))
+      if (item !== undefined) item.click()
+    })
+    const chooser = await chooserPromise
+    const PNG_B64_MAIN = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='
+    await chooser.setFiles({ name: 'auto.png', mimeType: 'image/png', buffer: Buffer.from(PNG_B64_MAIN, 'base64') })
+    await page.waitForTimeout(600)
+    await page.evaluate(() => {
+      const scene = window.__galScene.getSnapshot()
+      const el = [...scene.elements].reverse().find(e => e.type === 'image')
+      const node = el === undefined ? null : document.querySelector('[data-el-id="' + el.id + '"]')
+      window.__snapResults.push({
+        name: '导入图片一步导入并应用显示',
+        ok: el !== undefined && typeof el.image === 'string' && node !== null && (node.style.backgroundImage ?? '').includes('data:image/png'),
+      })
+      // 清理：移除本次导入的素材，避免影响后续素材计数断言。
+      if (el !== undefined && typeof el.image === 'string') void window.__galApi.removeAsset(el.image)
+    })
 
     const all = await page.evaluate(pageTestPhase2)
     for (const r of all) {
