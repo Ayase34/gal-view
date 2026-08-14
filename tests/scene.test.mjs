@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import {
   defaultScene, makeElement, normalizeScene, normalizeElement, cloneScene,
   elementStyle, sortElements, findDialogue, snapValue, elementCenter, nextCharacterLetter,
-  ensureDialogueText, ensureSpeakerNames, ensureActionButtons, STAGE_W, STAGE_H, MIN_SIZE,
+  ensureDialogueText, ensureSpeakerNames, ensureActionButtons, STAGE_W, STAGE_H, MIN_SIZE, ELEMENT_TYPES,
 } from '../.dsh-plugin/client/scene.mjs'
 
 test('defaultScene 是合法场景：含背景/两角色/对话框/独立台词，舞台 16:9', () => {
@@ -123,10 +123,10 @@ test('makeElement 各类型产生合法元素，角色字母递增', () => {
   assert.equal(a.type, 'character')
   const b = makeElement('character', { index: 1 })
   assert.equal(b.character.label, 'CHARACTER B')
-  const rect = makeElement('rect', {})
-  assert.ok(rect.w >= MIN_SIZE)
-  const circle = makeElement('circle', {})
-  assert.equal(circle.borderRadius, 55)
+  const img = makeElement('image', {})
+  assert.equal(img.type, 'image')
+  assert.ok(img.w >= MIN_SIZE)
+  assert.ok(!ELEMENT_TYPES.includes('rect') && !ELEMENT_TYPES.includes('circle') && !ELEMENT_TYPES.includes('decoration'), '矩形/圆形/装饰已从添加菜单移除，合并为 image')
 })
 
 test('cloneScene 深拷贝：改副本不影响原场景', () => {
@@ -154,7 +154,7 @@ test('align 默认与 elementStyle 输出', () => {
   assert.equal(normalizeElement({ id: 'a', type: 'dialogue-text' }).align, 'left')
   assert.equal(normalizeElement({ id: 'b', type: 'speaker-name' }).align, 'left')
   assert.equal(normalizeElement({ id: 'c', type: 'text' }).align, 'center')
-  assert.equal(normalizeElement({ id: 'd', type: 'rect' }).align, 'center')
+  assert.equal(normalizeElement({ id: 'd', type: 'image' }).align, 'center')
   // 显式对齐透传，非法值按类型默认
   assert.equal(normalizeElement({ id: 'e', type: 'text', align: 'right' }).align, 'right')
   assert.equal(normalizeElement({ id: 'f', type: 'text', align: 'bogus' }).align, 'center')

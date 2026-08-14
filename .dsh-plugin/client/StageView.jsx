@@ -69,6 +69,7 @@ function ElementBody({ el, mode, speaking, asset }) {
       </div>
     )
     case 'dialogue-text': return <div className="gv-eltext">{el.text !== '' ? el.text : '……'}</div>
+    case 'image': return <div className="gv-elshape">{!hasAsset && el.text === '' ? '图片' : el.text}</div>
     case 'speaker-name': return <div className="gv-sname">{el.text !== '' ? el.text : (el.role === 'assistant' ? 'AI 名牌' : '玩家名牌')}</div>
     case 'text': return <div className="gv-eltext">{el.text}</div>
     case 'button': return <div className="gv-elbtn">{el.text !== '' ? el.text : '按钮'}</div>

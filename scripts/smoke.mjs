@@ -1032,17 +1032,17 @@ async function main() {
       const x = window.__galScene.getSnapshot().elements.find(e => e.id === 'char-b').x
       window.__snapResults.push({ name: '越过舞台边缘不被钳制', ok: x < 0 })
     })
-    // 3) 拉伸矩形右缘吸附到舞台右缘（960）。
-    // 收起属性面板（悬浮面板会盖住舞台右缘），矩形右缘拖到舞台右缘 960。
+    // 3) 拉伸图片元素右缘吸附到舞台右缘（960）。
+    // 收起属性面板（悬浮面板会盖住舞台右缘），图片元素右缘拖到舞台右缘 960。
     const plan3 = await page.evaluate(async () => {
       const sleep = ms => new Promise(r => setTimeout(r, ms))
       const propsToggle = [...document.querySelectorAll('.gv-toolbar-group .gv-btn')].find(b => b.textContent === '属性')
       if (propsToggle !== undefined && !document.querySelector('.gv-editor-props').classList.contains('is-collapsed')) propsToggle.click()
       await sleep(300)
-      const rectId = window.__galApi.addElement('rect')
+      const rectId = window.__galApi.addElement('image')
       window.__galApi.updateElement(rectId, { x: 600, y: 80, w: 60, h: 60 })
       await sleep(80)
-      const row = [...document.querySelectorAll('.gv-tree-row')].find(r => r.textContent.includes('矩形'))
+      const row = [...document.querySelectorAll('.gv-tree-row')].find(r => r.textContent.includes('导入图片'))
       row.click()
       await sleep(100)
       const scale = parseFloat(document.querySelector('.gv-stage').dataset.scale)

@@ -417,6 +417,7 @@ export const CSS = `
 .gv-glyph-speaker-name { border: 1px solid var(--gv-accent); border-left-width: 3px; border-radius: 2px; }
 .gv-glyph-text { background: linear-gradient(90deg, var(--gv-text-dim) 0 70%, transparent 70%); }
 .gv-glyph-button { border: 1px solid var(--gv-accent-2); border-radius: 5px; }
+.gv-glyph-image { border: 1px solid var(--gv-accent-2); background: linear-gradient(160deg, transparent 52%, var(--gv-accent) 52% 70%, transparent 70%); }
 .gv-glyph-rect { border: 1px solid var(--gv-text-dim); }
 .gv-glyph-circle { border: 1px solid var(--gv-accent-red); border-radius: 50%; }
 .gv-glyph-decoration { border: 1px dashed var(--gv-text-dim); transform: rotate(45deg) scale(.85); }

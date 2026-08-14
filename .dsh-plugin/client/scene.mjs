@@ -11,7 +11,8 @@
 // Element 公共字段：id/type/name/x/y/w/h/rotation/opacity/z/locked/hidden
 //   外观：background/borderColor/borderWidth/borderRadius/color/fontSize/text
 //   type 专属：character: { key, label, name, color }
-// 元素类型：background | character | dialogue | dialogue-text | speaker-name | action-button | text | rect | circle | button | decoration
+// 元素类型：background | character | dialogue | dialogue-text | speaker-name | action-button | text | image | button
+// 历史类型 rect/circle/decoration 已从添加菜单移除（合并为 image），存量场景仍保留渲染兼容。
 
 export const SCENE_VERSION = 1
 export const STAGE_W = 960
@@ -20,7 +21,7 @@ export const MIN_SIZE = 12
 
 /** 元素类型清单（添加菜单与编辑器校验共用）。 */
 export const ELEMENT_TYPES = Object.freeze([
-  'background', 'character', 'dialogue', 'dialogue-text', 'speaker-name', 'text', 'rect', 'circle', 'button', 'action-button', 'decoration',
+  'background', 'character', 'dialogue', 'dialogue-text', 'speaker-name', 'text', 'image', 'button', 'action-button',
 ])
 
 /** 各类型文本的默认对齐：正文类（台词/名牌/对话框）左对齐，形状/水印类居中。 */
@@ -43,8 +44,10 @@ export const TYPE_LABELS = Object.freeze({
   'dialogue-text': '台词',
   'speaker-name': '说话人',
   text: '文本',
+  image: '导入图片',
   button: '按钮',
   'action-button': '透明按钮',
+  // 历史类型（存量场景显示用，添加菜单已移除）
   rect: '矩形',
   circle: '圆形',
   decoration: '装饰',
@@ -240,18 +243,9 @@ export function makeElement(type, { id = makeId(), index = 0, role, stageW = STA
       ...common, x: 800, y: 12, w: 44, h: 26, z: 23, text: '按钮', fontSize: 12,
       background: 'transparent', borderColor: 'rgba(255,255,255,.35)', borderRadius: 4,
     }
-    case 'rect': return {
+    case 'image': return {
       ...common, x: 360, y: 140, w: 240, h: 140, z: 8, text: '',
       background: 'rgba(155,140,255,.10)', borderColor: 'rgba(155,140,255,.55)', color: '#8f93c9', fontSize: 13,
-    }
-    case 'circle': return {
-      ...common, x: 430, y: 130, w: 110, h: 110, z: 9, borderRadius: 55, text: '',
-      background: 'rgba(111,184,255,.10)', borderColor: 'rgba(111,184,255,.55)', color: '#8f93c9', fontSize: 13,
-    }
-    case 'decoration': return {
-      ...common, x: 420, y: 80, w: 140, h: 90, z: 6, text: '',
-      borderColor: 'rgba(155,140,255,.4)', borderWidth: 1, background: 'transparent',
-      color: '#8f93c9', fontSize: 11,
     }
     default: return { ...common, x: 400, y: 200, w: 160, h: 100, z: 8 }
   }

@@ -117,7 +117,7 @@ function CheckField({ label, checked, onToggle, api }) {
 /** 属性面板：按选中元素类型渲染可编辑字段。 */
 function PropertiesPanel({ el, api, scene, assetsMap, fontsMap }) {
   const update = patch => api.updateElement(el.id, patch)
-  const isShape = el.type === 'text' || el.type === 'dialogue-text' || el.type === 'speaker-name' || el.type === 'button' || el.type === 'action-button' || el.type === 'rect' || el.type === 'circle' || el.type === 'decoration' || el.type === 'dialogue' || el.type === 'background'
+  const isShape = el.type === 'text' || el.type === 'dialogue-text' || el.type === 'speaker-name' || el.type === 'button' || el.type === 'action-button' || el.type === 'image' || el.type === 'rect' || el.type === 'circle' || el.type === 'decoration' || el.type === 'dialogue' || el.type === 'background'
   return (
     <div className="gv-props">
       <div className="gv-props-head">
@@ -423,6 +423,8 @@ export function Editor({ scene, api, history, assetsMap, fontsMap, onExitEditor 
   const editorRef = useRef(null)
   const addBtnRef = useRef(null)
   const addMenuRef = useRef(null)
+  const imageFileRef = useRef(null)
+  const pendingImageElRef = useRef(null)
   const selected = scene.elements.find(el => el.id === selectedId) ?? null
 
   // 添加菜单渲染在编辑根节点（工具栏 overflow 裁剪会把下坠菜单切掉），
@@ -504,6 +506,27 @@ export function Editor({ scene, api, history, assetsMap, fontsMap, onExitEditor 
     setAddOpen(false)
     setAddMenuPos(null)
     setSelectedId(id)
+    // 「导入图片」：创建元素后直接打开文件选择，导入并应用（一步到位）。
+    if (type === 'image') {
+      pendingImageElRef.current = id
+      imageFileRef.current?.click()
+    }
+  }
+
+  /** 「导入图片」元素的文件选择：导入素材并应用到刚创建的元素。 */
+  const onImportImage = e => {
+    const files = e.target.files
+    e.target.value = ''
+    if (files === null || files.length === 0) return
+    const targetId = pendingImageElRef.current
+    pendingImageElRef.current = null
+    void api.importAssets([...files]).then(result => {
+      if (result.ids.length > 0 && targetId !== null) {
+        const before = api.snapshotScene()
+        api.updateElement(targetId, { image: result.ids[0] })
+        api.commitHistory(before)
+      }
+    })
   }
 
   const onImportFile = e => {
@@ -576,6 +599,7 @@ export function Editor({ scene, api, history, assetsMap, fontsMap, onExitEditor 
           <button type="button" className="gv-btn" onClick={() => { api.resetScene(); setSelectedId(null) }}>重置</button>
           <input ref={fileRef} type="file" accept="application/json,.json" style={{ display: 'none' }} onChange={onImportFile} aria-label="导入场景 JSON" />
           <input ref={assetFileRef} type="file" accept="image/png,image/jpeg,image/webp,image/gif" multiple style={{ display: 'none' }} onChange={onImportAssets} aria-label="导入图片素材" />
+          <input ref={imageFileRef} type="file" accept="image/png,image/jpeg,image/webp,image/gif" style={{ display: 'none' }} onChange={onImportImage} aria-label="导入图片" />
           <input ref={fontFileRef} type="file" accept=".ttf,.otf,.woff,.woff2" multiple style={{ display: 'none' }} onChange={onImportFonts} aria-label="导入字体文件" />
         </div>
       </div>
