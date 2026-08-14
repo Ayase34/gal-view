@@ -18,11 +18,51 @@ DSH Web GUI 会话页的 **Galgame 风格对话视图 + 场景元素可视化编
 
 ## 安装
 
+本插件以官方 bundle 格式分发，用一条 dsh plugin 命令安装到 web profile，装完**重启 web** 即可生效。
+
+### 前置条件
+
+- 已安装 DeepSeek Harness，并且能在终端执行 dsh 命令
+- 如果你是从源码 checkout 运行 Harness（日常命令是 pnpm dsh）：先 cd 到 Harness 仓库根目录，再把下面的 dsh 全部替换为 pnpm dsh
+
+### 方式一：从 GitHub 安装（推荐，一行命令）
+
 ```sh
-# 本地目录安装（官方 profile 管理）
-dsh plugin --profile web add "C:\\...\\gal-view"
-# 装完重启 web（bundle 层在启动时合成）
+dsh plugin --profile web add github:Ayase34/gal-view#main
 ```
+
+#main 表示使用仓库的 main 分支；想锁定某个具体版本，可以换成提交哈希，例如 #ae73dca。
+
+### 方式二：本地安装（离线，或安装自己改动过的版本）
+
+1. 下载分发包 gal-view-vX.Y.Z.zip 并解压，得到 gal-view 文件夹
+2. 在终端执行（把路径换成你解压后的实际位置）：
+
+```sh
+dsh plugin --profile web add "C:\路径\gal-view"
+```
+
+### 完成安装
+
+安装后**重启 web**（bundle 层在启动时合成，必须重启才会加载插件）。重启后打开 Web GUI 的会话页，标签栏应出现 **「GAL视窗」** 标签（位于「对话」和「轨迹」之间）。
+
+> 可选验证：执行 dsh --profile web --dump-config，输出中应能看到 # == gal-view 这一层，说明插件层已进入组合。
+
+### 更新到新版本
+
+```sh
+dsh plugin --profile web update gal-view
+# 更新后同样要重启 web
+```
+
+### 卸载
+
+```sh
+dsh plugin --profile web remove gal-view
+# 卸载后同样要重启 web
+```
+
+> 说明：场景布局、素材图片、字体与阅读进度都保存在你的**浏览器**里（localStorage / IndexedDB），重装或卸载插件不会丢失；清除浏览器站点数据才会重置它们。
 
 
 ## 开发

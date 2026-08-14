@@ -16,11 +16,51 @@ Adds a **GAL View** tab between Chat (「对话」) and Trajectory (「轨迹」
 
 ## Installation
 
+The plugin ships in the official bundle format. Install it into the `web` profile with a single `dsh plugin` command, then **restart web** to take effect.
+
+### Prerequisites
+
+- DeepSeek Harness is installed and the `dsh` command works in your terminal
+- If you run Harness from a source checkout (your everyday command is `pnpm dsh`): `cd` into the Harness repo root first and replace `dsh` with `pnpm dsh` in the commands below
+
+### Option 1: Install from GitHub (recommended, one line)
+
 ```sh
-# Local directory install (official profile management)
-dsh plugin --profile web add "C:\\...\\gal-view"
-# Restart web afterwards (the bundle layer is composed at startup)
+dsh plugin --profile web add github:Ayase34/gal-view#main
 ```
+
+`#main` means the repository's main branch. To pin a specific version, use a commit hash instead, e.g. `#ae73dca`.
+
+### Option 2: Install locally (offline, or a version you modified)
+
+1. Download the release package `gal-view-vX.Y.Z.zip` and extract it to a `gal-view` folder
+2. Run in your terminal (replace the path with where you extracted it):
+
+```sh
+dsh plugin --profile web add "C:\path\to\gal-view"
+```
+
+### Finish the install
+
+**Restart web** afterwards (the bundle layer is composed at startup, so a restart is required for the plugin to load). Open a conversation in the Web GUI — a **GAL View** tab should appear in the tab bar, between Chat and Trajectory.
+
+> Optional check: run `dsh --profile web --dump-config`; you should see a `# == gal-view` layer, which means the plugin layer is part of the composition.
+
+### Update to a new version
+
+```sh
+dsh plugin --profile web update gal-view
+# restart web afterwards as well
+```
+
+### Uninstall
+
+```sh
+dsh plugin --profile web remove gal-view
+# restart web afterwards as well
+```
+
+> Note: the scene layout, imported images, fonts and reading progress live in your **browser** (localStorage / IndexedDB). Reinstalling or uninstalling the plugin does not lose them; clearing the browser's site data resets them.
 
 
 ## Development
