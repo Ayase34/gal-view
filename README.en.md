@@ -9,6 +9,11 @@ Adds a **GAL View** tab between Chat (「对话」) and Trajectory (「轨迹」
 ![image.png](image.png)
 
 
+## Default preset
+
+[`gal-scene.json`](gal-scene.json) at the repo root is the **default preset scene** shipped with the plugin (editor export format, with referenced images/fonts embedded): it loads automatically on first launch when no local scene is saved, and Editor Mode's Reset returns to it. To update the preset: edit the scene → export with `Ctrl+S` → replace the repo-root `gal-scene.json` with the exported file → `npm run build:client` and commit.
+
+
 ## Installation
 
 ```sh

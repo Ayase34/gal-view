@@ -11,6 +11,11 @@ DSH Web GUI 会话页的 **Galgame 风格对话视图 + 场景元素可视化编
 ![image.png](image.png)
 
 
+## 默认预设
+
+仓库根 [`gal-scene.json`](gal-scene.json) 是随包分发的**默认预设场景**（编辑器导出的格式，内嵌被引用的图片/字体）：首次打开「GAL视窗」且本地没有存档场景时自动加载，编辑模式的「重置」也回到该预设。更新预设：编辑场景 → `Ctrl+S` 导出 → 用导出的 `gal-scene.json` 替换仓库根同名文件 → `npm run build:client` 并提交。
+
+
 ## 安装
 
 ```sh

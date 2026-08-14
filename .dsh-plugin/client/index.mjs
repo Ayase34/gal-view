@@ -23,6 +23,8 @@ import {
   extOf, embedFonts, extractFonts, createIdbFonts,
 } from './fonts.mjs'
 import { createObservable, createHistory, createStorage, loadJSON, saveJSON } from './store.mjs'
+// 默认预设场景：仓库根 gal-scene.json（编辑器导出的格式，内嵌被引用的素材/字体）。
+import presetScene from '../../gal-scene.json'
 
 export const name = 'gal-view'
 
@@ -101,7 +103,7 @@ function createReadStore() {
 }
 
 /** 场景 API 工厂：所有变更实时写 sceneSource；历史栈承载可撤销快照；素材/字体库读写 IDB。 */
-function createSceneApi(sceneSource, history, historySource, storage, assetsSource, idb, fontsSource, fontIdb) {
+function createSceneApi(sceneSource, history, historySource, storage, assetsSource, idb, fontsSource, fontIdb, seedPresetAssets, presetBase) {
   const current = () => sceneSource.getSnapshot()
 
   const commit = next => {
@@ -249,9 +251,10 @@ function createSceneApi(sceneSource, history, historySource, storage, assetsSour
       return true
     },
 
-    /** 重置为默认 Demo 场景（自带历史）。 */
+    /** 重置为默认预设场景（自带历史；预设素材同步还原进库）。 */
     resetScene() {
-      pushAndCommit(defaultScene())
+      seedPresetAssets()
+      pushAndCommit(presetBase())
     },
 
     /** 撤销 / 重做（真正的 history stack）。 */
@@ -416,11 +419,6 @@ export function apply(ctx) {
   document.head.append(styleEl)
 
   const storage = createStorage()
-  // 迁移：旧场景补「台词」、双名牌与四个预设功能按钮（幂等）。
-  const initial = ensureActionButtons(ensureSpeakerNames(ensureDialogueText(normalizeScene(loadJSON(storage, PERSIST_KEY)) ?? defaultScene())))
-  const sceneSource = createObservable(initial)
-  const history = createHistory(HISTORY_LIMIT)
-  const historySource = createObservable({ undo: 0, redo: 0 })
   // 素材库：IndexedDB 持久 + 内存可观察镜像（图片 dataURL 不进 localStorage）。
   const assetsSource = createObservable({ map: new Map() })
   const idb = createIdbAssets()
@@ -446,7 +444,44 @@ export function apply(ctx) {
       syncFontStyles()
     }
   }).catch(() => {})
-  const api = createSceneApi(sceneSource, history, historySource, storage, assetsSource, idb, fontsSource, fontIdb)
+
+  // 默认预设：仓库根 gal-scene.json（导出格式，内嵌被引用素材/字体）。
+  // 首次启动（本地无存档场景）加载预设场景，并把内嵌素材/字体还原进库；
+  // 已有存档场景的用户不受影响（编辑模式「重置」也回到预设）。
+  const hasPreset = presetScene !== null && typeof presetScene === 'object'
+  const seedPresetAssets = () => {
+    if (!hasPreset) return
+    const embedded = extractAssets(presetScene)
+    if (embedded.length > 0) {
+      const map = new Map(assetsSource.getSnapshot().map)
+      for (const record of embedded) {
+        map.set(record.id, record)
+        void idb.put(record).catch(() => {})
+      }
+      assetsSource.update({ map })
+    }
+    const embeddedFonts = extractFonts(presetScene)
+    if (embeddedFonts.length > 0) {
+      const map = new Map(fontsSource.getSnapshot().map)
+      for (const record of embeddedFonts) {
+        map.set(record.id, record)
+        void fontIdb.put(record).catch(() => {})
+      }
+      fontsSource.update({ map })
+    }
+  }
+  const presetBase = () => (hasPreset ? (normalizeScene(presetScene) ?? defaultScene()) : defaultScene())
+  const savedScene = loadJSON(storage, PERSIST_KEY)
+  const usePreset = hasPreset && savedScene === null
+  // 迁移：旧场景补「台词」、双名牌与四个预设功能按钮（幂等）。
+  const initial = ensureActionButtons(ensureSpeakerNames(ensureDialogueText(
+    (usePreset ? presetBase() : normalizeScene(savedScene)) ?? defaultScene(),
+  )))
+  if (usePreset) seedPresetAssets()
+  const sceneSource = createObservable(initial)
+  const history = createHistory(HISTORY_LIMIT)
+  const historySource = createObservable({ undo: 0, redo: 0 })
+  const api = createSceneApi(sceneSource, history, historySource, storage, assetsSource, idb, fontsSource, fontIdb, seedPresetAssets, presetBase)
 
   // 插件开关：设置选项卡控制会话页「GAL视窗」标签的显隐。
   const enabledSource = createObservable(loadJSON(storage, ENABLED_KEY) !== false)

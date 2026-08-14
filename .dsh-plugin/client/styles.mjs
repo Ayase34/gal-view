@@ -112,7 +112,8 @@ export const CSS = `
 .gv-stage {
   position: relative;
   flex: none;
-  transform-origin: 0 0;
+  /* 居中缩放：wrap 按未缩放的布局盒居中，原点取中心才能让缩放后的舞台视觉居中（0 0 会在小窗口把舞台挤到左上并被裁掉）。 */
+  transform-origin: 50% 50%;
   background: #0c1026;
   box-shadow: 0 0 0 1px rgba(255, 255, 255, .06), 0 22px 60px rgba(0, 0, 0, .55);
 }

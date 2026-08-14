@@ -193,6 +193,11 @@ async function pageTestPhase1() {
   assert(document.querySelector('[data-gal-view]') !== null, '游戏模式渲染 [data-gal-view]')
   assert(document.querySelector('[data-gal-view]').getAttribute('data-gal-mode') === 'game', '默认游戏模式')
   assert(document.querySelector('.gv-dialogue') !== null, '渲染对话框')
+  // 默认预设：记录初始场景/素材库规模（重置与素材断言按预设而非代码默认），
+  // 并把打字速度提到 normal（预设默认 slow 会拖慢分页用例）。
+  window.__initialElementCount = sceneSource.getSnapshot().elements.length
+  window.__initialAssetCount = injected.hooks.assets.getSnapshot().map.size
+  api.updateSettings({ typeSpeed: 'normal' })
   // 对话框禁用毛玻璃：透明度应标准 alpha 混合（不模糊背后立绘透明区）。
   assert(getComputedStyle(document.querySelector('.gv-dialogue')).backdropFilter === 'none', '对话框无毛玻璃模糊')
   const styleText = document.querySelector('style[data-gal-view-style]').textContent
@@ -216,7 +221,7 @@ async function pageTestPhase1() {
     blank: false,
   })
   await sleep(300)
-  assert(document.querySelector('.gv-sname')?.textContent === '你', '玩家内容时名牌显示「你」')
+  assert(document.querySelector('.gv-sname')?.textContent === '用户', '玩家内容时名牌显示「用户」')
   // 恢复 AI 行。
   window.__setSession({
     sessionId: 'session-1',
@@ -240,7 +245,7 @@ async function pageTestPhase1() {
     blank: false,
   })
   await sleep(300)
-  assert(document.querySelectorAll('.gv-sname').length === 1 && document.querySelector('.gv-sname')?.textContent === '你', '玩家行仅显示玩家名牌')
+  assert(document.querySelectorAll('.gv-sname').length === 1 && document.querySelector('.gv-sname')?.textContent === '用户', '玩家行仅显示玩家名牌')
   // 系统行（错误事件）：两个名牌都隐藏。
   window.__setSession({
     sessionId: 'session-1',
@@ -396,10 +401,10 @@ async function pageTestPhase1() {
     running: true,
     blank: false,
   })
-  assert(await pollFor(() => (document.querySelector('.gv-sname')?.textContent === '你'
-    && (document.querySelector('.gv-dialogue-text')?.textContent ?? '') === '流式测试'), 2500), '思考阶段持续显示玩家消息（名牌「你」，完整打出）')
+  assert(await pollFor(() => (document.querySelector('.gv-sname')?.textContent === '用户'
+    && (document.querySelector('.gv-dialogue-text')?.textContent ?? '') === '流式测试'), 2500), '思考阶段持续显示玩家消息（名牌「用户」，完整打出）')
   await sleep(800)
-  assert(document.querySelector('.gv-sname')?.textContent === '你'
+  assert(document.querySelector('.gv-sname')?.textContent === '用户'
     && (document.querySelector('.gv-dialogue-text')?.textContent ?? '') === '流式测试', '思考期间玩家消息保持显示')
   assert(document.querySelector('.gv-dialogue-wait') === null, '思考占位省略号已移除')
   // 滞留后换页：状态页独立显示（空文本 + 状态行 + AI 名牌）。
@@ -490,7 +495,7 @@ async function pageTestPhase1() {
     blank: false,
   })
   await sleep(2200)
-  assert(document.querySelector('.gv-sname')?.textContent === '你'
+  assert(document.querySelector('.gv-sname')?.textContent === '用户'
     && (document.querySelector('.gv-dialogue-text')?.textContent ?? '') === '等待状态', '模型无状态时玩家消息持续滞留')
   // 模型状态到达 → 立即翻页（不再有额外等待）。
   window.__setSession({
@@ -632,22 +637,22 @@ async function pageTestPhase1() {
   await sleep(300)
   assert(!treePanel.classList.contains('is-collapsed') && !document.querySelector('.gv-editor-props').classList.contains('is-collapsed'), '边栏可恢复显示')
 
-  const charRow = [...treeRows].find(row => row.textContent.includes('角色 A'))
+  const charRow = [...treeRows].find(row => row.textContent.includes('角色'))
   charRow.click()
   await sleep(60)
   assert(document.querySelector('.gv-sel') !== null, '选中元素出现选中框')
 
   window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Delete', bubbles: true }))
   await sleep(60)
-  assert(!sceneSource.getSnapshot().elements.some(el => el.id === 'char-a'), 'Delete 删除选中元素')
+  assert(!sceneSource.getSnapshot().elements.some(el => el.id === 'char-b'), 'Delete 删除选中元素')
   assert(historySource.getSnapshot().undo > 0, '删除写入撤销历史')
 
   window.dispatchEvent(new KeyboardEvent('keydown', { key: 'z', ctrlKey: true, bubbles: true }))
   await sleep(60)
-  assert(sceneSource.getSnapshot().elements.some(el => el.id === 'char-a'), 'Ctrl+Z 恢复元素')
+  assert(sceneSource.getSnapshot().elements.some(el => el.id === 'char-b'), 'Ctrl+Z 恢复元素')
 
   // 重新选中后再 Escape：只取消选中，不退出编辑模式（拖拽随后在编辑模式进行）。
-  const charRow2 = [...document.querySelectorAll('.gv-tree-row')].find(row => row.textContent.includes('角色 A'))
+  const charRow2 = [...document.querySelectorAll('.gv-tree-row')].find(row => row.textContent.includes('角色'))
   charRow2.click()
   await sleep(60)
   assert(document.querySelector('.gv-sel') !== null, '重新选中出现选中框')
@@ -659,14 +664,19 @@ async function pageTestPhase1() {
   const exported = JSON.parse(api.exportScene())
   assert(Array.isArray(exported.elements) && exported.elements.length > 0, '导出场景 JSON 合法')
 
+  // 此前 focus() 可能滚动了会话滚动体：重置后再取坐标（手柄/元素须在视口内可点）。
+  window.scrollTo(0, 0)
+  const scrollBodyReset = document.querySelector('[data-conversation-scroll]')
+  if (scrollBodyReset !== null) scrollBodyReset.scrollTop = 0
   window.__dragTarget = (() => {
-    const el = document.querySelector('[data-el-id="char-a"]')
+    const el = document.querySelector('[data-el-id="char-b"]')
     if (el === null) return null
     const rect = el.getBoundingClientRect()
-    const charA = sceneSource.getSnapshot().elements.find(e => e.id === 'char-a')
+    const charA = sceneSource.getSnapshot().elements.find(e => e.id === 'char-b')
+    // 抓元素顶部区域：预设里立绘盒子很大，中心会被台词元素（更高 z）遮挡。
     return {
       x: rect.left + rect.width / 2,
-      y: rect.top + rect.height / 2,
+      y: rect.top + rect.height * 0.05,
       beforeX: charA.x,
       beforeY: charA.y,
     }
@@ -681,8 +691,8 @@ async function pageTestPhase2() {
   const assert = (cond, name) => { results.push({ name, ok: !!cond }) }
   const sleep = ms => new Promise(r => setTimeout(r, ms))
   const sceneSource = window.__galScene
-  const charA = sceneSource.getSnapshot().elements.find(e => e.id === 'char-a')
-  assert(charA !== undefined, '拖拽后 char-a 仍存在')
+  const charA = sceneSource.getSnapshot().elements.find(e => e.id === 'char-b')
+  assert(charA !== undefined, '拖拽后 char-b 仍存在')
   const drag = window.__dragTarget
   if (charA !== undefined && drag !== null && drag !== undefined) {
     const moved = charA.x !== drag.beforeX || charA.y !== drag.beforeY
@@ -741,7 +751,7 @@ async function pageTestPhase2() {
   await sleep(80)
 
   window.__galApi.resetScene()
-  assert(sceneSource.getSnapshot().elements.length === 13, '重置恢复默认场景元素')
+  assert(sceneSource.getSnapshot().elements.length === window.__initialElementCount, '重置恢复默认预设场景元素')
 
   // ---- 美术素材：导入 → 应用 → 渲染 → 导出内嵌 → 删除清理 ----
   const PNG_B64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='
@@ -749,7 +759,7 @@ async function pageTestPhase2() {
   const file = new File([bytes], 'bg.png', { type: 'image/png' })
   const imported = await window.__galApi.importAssets([file])
   assert(imported.added === 1 && imported.ids.length === 1, '导入素材入库')
-  assert(window.__galAssets.getSnapshot().map.size === 1, '素材源含 1 条记录')
+  assert(window.__galAssets.getSnapshot().map.size === window.__initialAssetCount + 1, '素材源新增 1 条记录')
   const assetId = imported.ids[0]
   const beforeAsset = window.__galApi.snapshotScene()
   window.__galApi.updateElement('background', { image: assetId })
@@ -758,15 +768,15 @@ async function pageTestPhase2() {
   const bgEl = document.querySelector('[data-el-id="background"]')
   assert(bgEl !== null && bgEl.style.backgroundImage.includes('data:image/png'), '背景元素应用素材图片')
   const beforeChar = window.__galApi.snapshotScene()
-  window.__galApi.updateElement('char-a', { image: assetId })
+  window.__galApi.updateElement('char-b', { image: assetId })
   window.__galApi.commitHistory(beforeChar)
   await sleep(60)
-  const charImg = document.querySelector('[data-el-id="char-a"] .gv-char-img')
+  const charImg = document.querySelector('[data-el-id="char-b"] .gv-char-img')
   assert(charImg !== null && charImg.src.includes('data:image/png'), '角色立绘应用素材图片')
   const withAsset = JSON.parse(window.__galApi.exportScene())
   assert(withAsset.assets !== undefined && withAsset.assets[assetId] !== undefined, '导出 JSON 内嵌被引用素材')
   await window.__galApi.removeAsset(assetId)
-  assert(window.__galAssets.getSnapshot().map.size === 0, '删除素材出库')
+  assert(window.__galAssets.getSnapshot().map.size === window.__initialAssetCount, '删除素材出库')
   assert(sceneSource.getSnapshot().elements.find(e => e.id === 'background').image === null, '删除素材清除元素引用')
 
   // ---- 自定义字体：导入 → 注册 @font-face → 应用到台词 → 导出内嵌 → 删除 ----
@@ -882,10 +892,10 @@ async function main() {
     // 1) 拖 char-a 到舞台左缘：落在阈值内 → 吸附到 x=0。
     const plan1 = await page.evaluate(() => {
       const scale = parseFloat(document.querySelector('.gv-stage').dataset.scale)
-      const el = document.querySelector('[data-el-id="char-a"]')
+      const el = document.querySelector('[data-el-id="char-b"]')
       const r = el.getBoundingClientRect()
-      const data = window.__galScene.getSnapshot().elements.find(e => e.id === 'char-a')
-      return { cx: r.left + r.width / 2, cy: r.top + r.height / 2, dx: (2 - data.x) * scale }
+      const data = window.__galScene.getSnapshot().elements.find(e => e.id === 'char-b')
+      return { cx: r.left + r.width / 2, cy: r.top + r.height * 0.05, dx: (2 - data.x) * scale }
     })
     await page.mouse.move(plan1.cx, plan1.cy)
     await page.mouse.down()
@@ -894,11 +904,11 @@ async function main() {
     await page.waitForTimeout(150)
     // 2) 继续向左越过边缘：不钳制。
     const plan2 = await page.evaluate(() => {
-      const x = window.__galScene.getSnapshot().elements.find(e => e.id === 'char-a').x
+      const x = window.__galScene.getSnapshot().elements.find(e => e.id === 'char-b').x
       window.__snapResults.push({ name: '拖动吸附到舞台左缘', ok: x === 0 })
       const scale = parseFloat(document.querySelector('.gv-stage').dataset.scale)
-      const r = document.querySelector('[data-el-id="char-a"]').getBoundingClientRect()
-      return { cx: r.left + r.width / 2, cy: r.top + r.height / 2, dx: -40 * scale }
+      const r = document.querySelector('[data-el-id="char-b"]').getBoundingClientRect()
+      return { cx: r.left + r.width / 2, cy: r.top + r.height * 0.05, dx: -40 * scale }
     })
     await page.mouse.move(plan2.cx, plan2.cy)
     await page.mouse.down()
@@ -906,7 +916,7 @@ async function main() {
     await page.mouse.up()
     await page.waitForTimeout(150)
     await page.evaluate(() => {
-      const x = window.__galScene.getSnapshot().elements.find(e => e.id === 'char-a').x
+      const x = window.__galScene.getSnapshot().elements.find(e => e.id === 'char-b').x
       window.__snapResults.push({ name: '越过舞台边缘不被钳制', ok: x < 0 })
     })
     // 3) 拉伸矩形右缘吸附到舞台右缘（960）。
