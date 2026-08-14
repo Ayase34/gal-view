@@ -306,19 +306,10 @@ export function GalView({ useSession, inputActions, useScene, useHistory, useAss
       restorePendingRef.current = false
       setPages(nextPages)
       pagesTextRef.current = currentLine.text
-      // 阅读状态恢复：同一行重挂载时回到原页码与打字进度（不从头渲染）。
-      const stored = readStateRef.current
-      if (stored.lineKey === currentLine.key && restoredKeyRef.current !== currentLine.key) {
-        restoredKeyRef.current = currentLine.key
-        const idx = Math.min(stored.pageIndex, nextPages.length - 1)
-        setPageIndex(idx)
-        const page = nextPages[idx] ?? currentLine.text
-        const keep = page.startsWith(stored.shown) ? stored.shown : ''
-        setType({ target: page, shown: keep, done: keep === page })
-        return
-      }
-      // 流式 → 定稿无缝衔接：第一页沿用流式打字进度（不闪空）；
+      // 流式 → 定稿无缝衔接（优先于重挂载恢复）：第一页沿用流式打字进度（不闪空）；
       // 流式期间已打满第一页则直接完整显示（不重打，点击照常翻下一页）。
+      // 必须先于恢复分支：完成窗口内的保存会把 lineKey 写成定稿节点键，
+      // 恢复分支会误判成重挂载并按旧进度重置（第一页重打）。
       const streamed = streamedTypeRef.current
       if (streamed !== null
         && typeof streamed.target === 'string'
@@ -331,6 +322,17 @@ export function GalView({ useSession, inputActions, useScene, useHistory, useAss
         } else {
           setType({ target: page, shown: page, done: true })
         }
+        return
+      }
+      // 阅读状态恢复：同一行重挂载时回到原页码与打字进度（不从头渲染）。
+      const stored = readStateRef.current
+      if (stored.lineKey === currentLine.key && restoredKeyRef.current !== currentLine.key) {
+        restoredKeyRef.current = currentLine.key
+        const idx = Math.min(stored.pageIndex, nextPages.length - 1)
+        setPageIndex(idx)
+        const page = nextPages[idx] ?? currentLine.text
+        const keep = page.startsWith(stored.shown) ? stored.shown : ''
+        setType({ target: page, shown: keep, done: keep === page })
       }
     }
     // 测量放在宏任务：让测量元素先进入文档流，避免同帧布局未结算。

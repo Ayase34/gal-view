@@ -486,6 +486,35 @@ async function pageTestPhase1() {
     await sleep(30)
   }
   assert(minWindowLen >= beforeWindowFinalize.length, '状态帧后到不重打（显示长度不回退）')
+  // 回归：长回复定稿时流式已打满第一页 → 直接完整显示第一页，不清空重打。
+  const longReply = '这是一段很长的流式回复内容。'.repeat(30)
+  window.__setSession({
+    sessionId: 'session-1',
+    nodes: [{ kind: 'user', seq: 60, content: [{ type: 'text', text: '长回复测试' }], source: null }],
+    partial: { turn: 4, step: 1, blocks: [{ kind: 'text', text: longReply }] },
+    running: true,
+    blank: false,
+  })
+  assert(await pollFor(() => (document.querySelector('.gv-dialogue-text')?.textContent ?? '').length > 250, 20000), '长回复流式打字超过第一页容量')
+  window.__setSession({
+    sessionId: 'session-1',
+    nodes: [
+      { kind: 'user', seq: 60, content: [{ type: 'text', text: '长回复测试' }], source: null },
+      { kind: 'assistant', seq: 61, turn: 4, step: 1, blocks: [{ kind: 'text', text: longReply }] },
+    ],
+    partial: null,
+    running: false,
+    blank: false,
+  })
+  let longSawEmpty = false
+  for (let i = 0; i < 40; i++) {
+    const t = document.querySelector('.gv-dialogue-text')?.textContent ?? ''
+    if (t === '') longSawEmpty = true
+    await sleep(30)
+  }
+  assert(!longSawEmpty, '长回复定稿不重打第一页（无闪空）')
+  const pageOne = document.querySelector('.gv-dialogue-text')?.textContent ?? ''
+  assert(pageOne.length > 0 && longReply.startsWith(pageOne), '定稿后第一页完整显示')
   // 状态触发翻页：模型尚无任何状态时，消息滞留超过固定时长仍保持显示。
   window.__setSession({
     sessionId: 'session-1',
