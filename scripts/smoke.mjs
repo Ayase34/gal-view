@@ -422,31 +422,33 @@ async function pageTestPhase1() {
     blank: false,
   })
   assert(await pollFor(() => (document.querySelector('.gv-sname')?.textContent === 'DeepSeek'
-    && (document.querySelector('.gv-dialogue-text')?.textContent ?? '').includes('流式回复')), 3000), '文本流式阶段：名牌 DeepSeek + 流式文本渲染')
-  assert(await pollFor(() => (document.querySelector('.gv-sname')?.textContent === 'DeepSeek'
-    && document.querySelector('.gv-dtext-status') === null), 3000), '文本到达后状态行消失')
-  // 回归：流式 → 定稿切换不得闪空/重打——定稿瞬间文本框保持已打出的内容（长度不回退）。
-  const beforeFinalize = document.querySelector('.gv-dialogue-text')?.textContent ?? ''
+    && (document.querySelector('.gv-dialogue-text')?.textContent ?? '') === ''
+    && (document.querySelector('.gv-dtext-status')?.textContent ?? '').includes('思考中')), 3000), '生成阶段仍显示状态页（思考中，不渲染正文）')
+  // 回归：定稿后才渲染回复——第一段一次性打出，不回退不重打。
+  const finalReply = '流式回复进行中，定稿后继续。'
   window.__setSession({
     sessionId: 'session-1',
     nodes: [
       { kind: 'user', seq: 30, content: [{ type: 'text', text: '流式测试' }], source: null },
-      { kind: 'assistant', seq: 31, turn: 1, step: 1, blocks: [{ kind: 'text', text: '流式回复进行中，定稿后继续。' }] },
+      { kind: 'assistant', seq: 31, turn: 1, step: 1, blocks: [{ kind: 'text', text: finalReply }] },
     ],
     partial: null,
     running: false,
     blank: false,
   })
-  let minShownLen = Infinity
-  for (let i = 0; i < 24; i++) {
+  let finalPrevLen = -1
+  let finalRestart = false
+  let finalDone = false
+  for (let i = 0; i < 60; i++) {
     const t = document.querySelector('.gv-dialogue-text')?.textContent ?? ''
-    minShownLen = Math.min(minShownLen, t.length)
+    if (t.length < finalPrevLen) finalRestart = true
+    finalPrevLen = t.length
+    if (t === finalReply) finalDone = true
     await sleep(30)
   }
-  assert(beforeFinalize.length > 0, '定稿前流式文本已显示')
-  assert(minShownLen >= beforeFinalize.length, '流式转定稿不闪空不重打（显示长度不回退）')
-  assert((document.querySelector('.gv-dialogue-text')?.textContent ?? '').includes('定稿后继续'), '定稿后首段完整显示')
-  // 回归：定稿节点与 running=false 状态帧分开到达时，完成窗口内不闪状态页、不重打。
+  assert(!finalRestart, '定稿渲染一次性完成（长度不回退不重打）')
+  assert(finalDone, '定稿后完整渲染回复')
+  // 回归：定稿节点与 running=false 状态帧分开到达时，完成窗口内仍不渲染正文。
   window.__setSession({
     sessionId: 'session-1',
     nodes: [{ kind: 'user', seq: 40, content: [{ type: 'text', text: '分开到达' }], source: null }],
@@ -454,8 +456,9 @@ async function pageTestPhase1() {
     running: true,
     blank: false,
   })
-  assert(await pollFor(() => (document.querySelector('.gv-dialogue-text')?.textContent ?? '').includes('窗口期正文'), 3000), '完成窗口流式正文已显示')
-  // 节点先落地：partial 清空、running 仍为 true——应继续显示正文而不是闪状态页。
+  assert(await pollFor(() => (document.querySelector('.gv-dialogue-text')?.textContent ?? '') === ''
+    && (document.querySelector('.gv-dtext-status')?.textContent ?? '').includes('思考中'), 3000), '窗口期正文不渲染（保持状态页）')
+  // 节点先落地：partial 清空、running 仍为 true——正文仍不渲染。
   window.__setSession({
     sessionId: 'session-1',
     nodes: [
@@ -466,9 +469,8 @@ async function pageTestPhase1() {
     running: true,
     blank: false,
   })
-  assert(await pollFor(() => (document.querySelector('.gv-dialogue-text')?.textContent ?? '').includes('窗口期正文')
-    && document.querySelector('.gv-dtext-status') === null, 2500), '完成窗口内不闪状态页（正文持续显示）')
-  const beforeWindowFinalize = document.querySelector('.gv-dialogue-text')?.textContent ?? ''
+  await sleep(150)
+  assert((document.querySelector('.gv-dialogue-text')?.textContent ?? '') === '', '完成窗口内不渲染正文')
   window.__setSession({
     sessionId: 'session-1',
     nodes: [
@@ -479,13 +481,18 @@ async function pageTestPhase1() {
     running: false,
     blank: false,
   })
-  let minWindowLen = Infinity
-  for (let i = 0; i < 24; i++) {
+  let windowPrevLen = -1
+  let windowRestart = false
+  let windowDone = false
+  for (let i = 0; i < 60; i++) {
     const t = document.querySelector('.gv-dialogue-text')?.textContent ?? ''
-    minWindowLen = Math.min(minWindowLen, t.length)
+    if (t.length < windowPrevLen) windowRestart = true
+    windowPrevLen = t.length
+    if (t === '窗口期正文，继续到定稿。') windowDone = true
     await sleep(30)
   }
-  assert(minWindowLen >= beforeWindowFinalize.length, '状态帧后到不重打（显示长度不回退）')
+  assert(!windowRestart, '状态帧后到定稿渲染一次性完成（不回退）')
+  assert(windowDone, '状态帧后到完整渲染回复')
   // 回归：长回复定稿时流式已打满第一页 → 直接完整显示第一页，不清空重打。
   const longReply = '这是一段很长的流式回复内容。'.repeat(30)
   window.__setSession({
@@ -495,7 +502,8 @@ async function pageTestPhase1() {
     running: true,
     blank: false,
   })
-  assert(await pollFor(() => (document.querySelector('.gv-dialogue-text')?.textContent ?? '').length > 250, 20000), '长回复流式打字超过第一页容量')
+  assert(await pollFor(() => (document.querySelector('.gv-dtext-status')?.textContent ?? '').includes('思考中')
+    && (document.querySelector('.gv-dialogue-text')?.textContent ?? '') === '', 3000), '长回复生成阶段不渲染正文')
   window.__setSession({
     sessionId: 'session-1',
     nodes: [
@@ -506,98 +514,17 @@ async function pageTestPhase1() {
     running: false,
     blank: false,
   })
-  let longSawEmpty = false
-  for (let i = 0; i < 40; i++) {
+  let longPrevLen = -1
+  let longRestart = false
+  for (let i = 0; i < 80; i++) {
     const t = document.querySelector('.gv-dialogue-text')?.textContent ?? ''
-    if (t === '') longSawEmpty = true
+    if (t.length < longPrevLen) longRestart = true
+    longPrevLen = t.length
     await sleep(30)
   }
-  assert(!longSawEmpty, '长回复定稿不重打第一页（无闪空）')
+  assert(!longRestart, '长回复定稿第一页一次性渲染（不回退）')
   const pageOne = document.querySelector('.gv-dialogue-text')?.textContent ?? ''
   assert(pageOne.length > 0 && longReply.startsWith(pageOne), '定稿后第一页完整显示')
-  // 回归：真实运行时定稿节点文本与流式全文尾部存在分段差异——按已显示的
-  // 可见前缀衔接第一页（startsWith 全文目标会失配导致重打）。
-  const sharedBase = '完全相同的开头内容，用来撑满第一页之后继续延伸，让流式与定稿共享一个足够长的公共前缀。'.repeat(2)
-  const streamedText2 = sharedBase + '流式尾部的特有内容。'.repeat(6)
-  const finalText2 = sharedBase + '定稿尾部的不同内容。'.repeat(6)
-  window.__setSession({
-    sessionId: 'session-1',
-    nodes: [{ kind: 'user', seq: 80, content: [{ type: 'text', text: '分段测试' }], source: null }],
-    partial: { turn: 6, step: 1, blocks: [{ kind: 'text', text: streamedText2 }] },
-    running: true,
-    blank: false,
-  })
-  assert(await pollFor(() => (document.querySelector('.gv-dialogue-text')?.textContent ?? '').length >= 60, 20000), '分段流式打字已超过第一页容量')
-  window.__setSession({
-    sessionId: 'session-1',
-    nodes: [
-      { kind: 'user', seq: 80, content: [{ type: 'text', text: '分段测试' }], source: null },
-      { kind: 'assistant', seq: 81, turn: 6, step: 1, blocks: [{ kind: 'text', text: finalText2 }] },
-    ],
-    partial: null,
-    running: false,
-    blank: false,
-  })
-  let segSawEmpty = false
-  for (let i = 0; i < 40; i++) {
-    const t = document.querySelector('.gv-dialogue-text')?.textContent ?? ''
-    if (t === '') segSawEmpty = true
-    await sleep(30)
-  }
-  assert(!segSawEmpty, '分段差异定稿不重打第一页（无闪空）')
-  const segPage = document.querySelector('.gv-dialogue-text')?.textContent ?? ''
-  assert(segPage.length > 0 && finalText2.startsWith(segPage), '分段差异定稿后第一页衔接显示')
-  // 回归：定稿后节点列表短暂回退（真实运行时的 settled→running 振荡，lastLine
-  // 一度回到玩家消息）再重新落地——不重定向打字机、不重打第一页。
-  const oscText = '振荡窗口的流式正文内容。'.repeat(6)
-  window.__setSession({
-    sessionId: 'session-1',
-    nodes: [{ kind: 'user', seq: 90, content: [{ type: 'text', text: '振荡测试' }], source: null }],
-    partial: { turn: 7, step: 1, blocks: [{ kind: 'text', text: oscText }] },
-    running: true,
-    blank: false,
-  })
-  assert(await pollFor(() => (document.querySelector('.gv-dialogue-text')?.textContent ?? '').length >= 60, 20000), '振荡回归流式打字超过第一页容量')
-  window.__setSession({
-    sessionId: 'session-1',
-    nodes: [
-      { kind: 'user', seq: 90, content: [{ type: 'text', text: '振荡测试' }], source: null },
-      { kind: 'assistant', seq: 91, turn: 7, step: 1, blocks: [{ kind: 'text', text: oscText }] },
-    ],
-    partial: null,
-    running: false,
-    blank: false,
-  })
-  await sleep(120)
-  // 节点列表回退：只剩玩家消息。
-  window.__setSession({
-    sessionId: 'session-1',
-    nodes: [{ kind: 'user', seq: 90, content: [{ type: 'text', text: '振荡测试' }], source: null }],
-    partial: null,
-    running: false,
-    blank: false,
-  })
-  await sleep(120)
-  // 节点重新落地。
-  window.__setSession({
-    sessionId: 'session-1',
-    nodes: [
-      { kind: 'user', seq: 90, content: [{ type: 'text', text: '振荡测试' }], source: null },
-      { kind: 'assistant', seq: 91, turn: 7, step: 1, blocks: [{ kind: 'text', text: oscText }] },
-    ],
-    partial: null,
-    running: false,
-    blank: false,
-  })
-  let oscSawEmpty = false
-  for (let i = 0; i < 40; i++) {
-    const t = document.querySelector('.gv-dialogue-text')?.textContent ?? ''
-    if (t === '') oscSawEmpty = true
-    await sleep(30)
-  }
-  assert(!oscSawEmpty, '定稿振荡回退不重打第一页（无闪空）')
-  const oscPage = document.querySelector('.gv-dialogue-text')?.textContent ?? ''
-  assert(oscPage.length > 0 && oscText.startsWith(oscPage), '定稿振荡回退后第一页衔接显示')
   // 状态触发翻页：模型尚无任何状态时，消息滞留超过固定时长仍保持显示。
   window.__setSession({
     sessionId: 'session-1',

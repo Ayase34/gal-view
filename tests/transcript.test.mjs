@@ -140,8 +140,8 @@ test('deriveStatus 归类全部会话状态', () => {
   assert.equal(deriveStatus({ running: true, partial: { blocks: [toolCall()] }, pending: [{}] }), '等待回应')
   // 思考中
   assert.equal(deriveStatus({ running: true, partial: { blocks: [{ kind: 'reasoning', text: '想' }] } }), '思考中')
-  // 输出正文 → 无状态
-  assert.equal(deriveStatus({ running: true, partial: { blocks: [text('正文')] } }), null)
+  // 生成正文 → 思考中（流式期间不渲染正文，定稿后才渲染）
+  assert.equal(deriveStatus({ running: true, partial: { blocks: [text('正文')] } }), '思考中')
   // 非运行：错误行 → 出错
   assert.equal(deriveStatus({ running: false, lastLine: { key: 'e', kind: 'system', text: '[错误]', error: true } }), '出错')
   // 非运行：发送失败

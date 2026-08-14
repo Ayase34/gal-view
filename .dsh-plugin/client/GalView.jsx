@@ -267,9 +267,9 @@ export function GalView({ useSession, inputActions, useScene, useHistory, useAss
     && !capturedLanded
     && (lastLine === null || lastLine.kind === 'player')
   // 状态页：换页后的独立一页——空文本 + 状态行作为正文，名牌为 AI。
-  // 完成窗口内不换状态页，避免「第一页 → 状态闪 → 第一页重打」。
-  const showStatusPage = running && liveText === '' && !capturedLanded && !capturedPending
-    && (statusHold || pendingPlayer === null)
+  // 流式生成阶段（liveText 非空）也强制走状态页：正文不实时渲染，
+  // 定稿（running=false）后才进入回复渲染（打字机/分页）。
+  const showStatusPage = running && (liveText !== '' || statusHold || pendingPlayer === null)
   const currentLine = showStatusPage
     ? { key: 'live', kind: 'assistant', text: '' }
     : running

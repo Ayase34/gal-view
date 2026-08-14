@@ -73,8 +73,8 @@ export function partialStatus(partial) {
 /**
  * 完整状态推导（归类所有会话状态）：
  * - 非运行：最后一行是错误（turn-error）→ '出错'；发送失败（promptError op=send）→ '发送失败'。
- * - 运行中：有待回应（批准/提问）→ '等待回应'；正在输出正文 → null；
- *   思考 → '思考中'；其余（工具调用/工具执行/未知/空）统一 → '编写代码中'（不再附注工具名）。
+ * - 运行中：有待回应（批准/提问）→ '等待回应'；正在生成正文 → '思考中'（流式期间不渲染正文，
+ *   定稿后才渲染）；思考 → '思考中'；其余（工具调用/工具执行/未知/空）统一 → '编写代码中'（不再附注工具名）。
  */
 export function deriveStatus({ running, partial, pending = [], lastLine = null, promptError = null }) {
   if (!running) {
@@ -85,7 +85,8 @@ export function deriveStatus({ running, partial, pending = [], lastLine = null, 
   if (Array.isArray(pending) && pending.length > 0) return '等待回应'
   const hasText = partial !== null && typeof partial === 'object' && Array.isArray(partial.blocks)
     && partial.blocks.some(b => b !== null && typeof b === 'object' && b.kind === 'text' && (b.text ?? '') !== '')
-  if (hasText) return null
+  // 生成正文期间状态页显示「思考中」（流式不渲染正文，定稿后才渲染回复）。
+  if (hasText) return '思考中'
   // 工具调用与工具执行合并为一个状态（不再附注工具名）。
   return partialStatus(partial) ?? '编写代码中'
 }
