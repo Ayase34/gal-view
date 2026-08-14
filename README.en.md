@@ -23,22 +23,13 @@ The plugin ships in the official bundle format. Install it into the `web` profil
 - DeepSeek Harness is installed and the `dsh` command works in your terminal
 - If you run Harness from a source checkout (your everyday command is `pnpm dsh`): `cd` into the Harness repo root first and replace `dsh` with `pnpm dsh` in the commands below
 
-### Option 1: Install from GitHub (recommended, one line)
+### Install from GitHub (one line)
 
 ```sh
 dsh plugin --profile web add github:Ayase34/gal-view#main
 ```
 
 `#main` means the repository's main branch. To pin a specific version, use a commit hash instead, e.g. `#ae73dca`.
-
-### Option 2: Install locally (offline, or a version you modified)
-
-1. Download the release package `gal-view-vX.Y.Z.zip` and extract it to a `gal-view` folder
-2. Run in your terminal (replace the path with where you extracted it):
-
-```sh
-dsh plugin --profile web add "C:\path\to\gal-view"
-```
 
 ### Finish the install
 

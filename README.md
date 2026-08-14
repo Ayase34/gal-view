@@ -25,22 +25,13 @@ DSH Web GUI 会话页的 **Galgame 风格对话视图 + 场景元素可视化编
 - 已安装 DeepSeek Harness，并且能在终端执行 dsh 命令
 - 如果你是从源码 checkout 运行 Harness（日常命令是 pnpm dsh）：先 cd 到 Harness 仓库根目录，再把下面的 dsh 全部替换为 pnpm dsh
 
-### 方式一：从 GitHub 安装（推荐，一行命令）
+### 从 GitHub 安装（一行命令）
 
 ```sh
 dsh plugin --profile web add github:Ayase34/gal-view#main
 ```
 
 #main 表示使用仓库的 main 分支；想锁定某个具体版本，可以换成提交哈希，例如 #ae73dca。
-
-### 方式二：本地安装（离线，或安装自己改动过的版本）
-
-1. 下载分发包 gal-view-vX.Y.Z.zip 并解压，得到 gal-view 文件夹
-2. 在终端执行（把路径换成你解压后的实际位置）：
-
-```sh
-dsh plugin --profile web add "C:\路径\gal-view"
-```
 
 ### 完成安装
 
