@@ -1,0 +1,7 @@
+# gal-view bundle patch：向 web 组合挂载 gal-view。
+# Node half 极简（场景状态存浏览器 localStorage，无需后端）；
+# 主体是 client half —— 经 package.json 的 dsh.client 声明由 client 内核组合进页面，
+# 注册 conversation.view 槽位的 'gal' 视图（order 5，落在「对话」与「轨迹」之间）。
+- insert:
+    - id: gal-view
+      name: gal-view

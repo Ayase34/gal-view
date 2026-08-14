@@ -1,0 +1,36 @@
+{
+  "name": "gal-view",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "DSH Web GUI 会话页的 GAL 视窗：Galgame 风格对话视图 + 场景元素可视化编辑器",
+  "scripts": {
+    "test": "node --test 'tests/*.test.mjs'",
+    "build:client": "node scripts/build-client.mjs",
+    "check:client": "node scripts/build-client.mjs --check",
+    "smoke": "node scripts/smoke.mjs"
+  },
+  "main": "./.dsh-plugin/index.mjs",
+  "exports": {
+    ".": "./.dsh-plugin/index.mjs",
+    "./client": "./.dsh-plugin/client.js",
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./package.json": "./package.json"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "inject": [
+        "slots"
+      ]
+    }
+  },
+  "devDependencies": {
+    "@esbuild/win32-x64": "0.28.2",
+    "esbuild": "^0.28.1"
+  },
+  "license": "MIT"
+}
