@@ -530,7 +530,7 @@ async function pageTestPhase1() {
     const text = document.querySelector('.gv-dtext-status')?.textContent ?? ''
     return text.includes('编写代码中') && !text.includes('grep')
   }, 4000), '工具执行时统一显示状态（编写代码中，不附注工具名）')
-  // 错误归类：回合失败显示「出错」。
+  // 错误归类：回合失败显示错误行正文（[错误] …），不再叠加「（出错…）」状态行。
   window.__setSession({
     sessionId: 'session-1',
     nodes: [{ kind: 'turn-error', seq: 60, turn: 1, step: 1, message: 'boom' }],
@@ -538,7 +538,8 @@ async function pageTestPhase1() {
     running: false,
     blank: false,
   })
-  assert(await pollFor(() => (document.querySelector('.gv-dtext-status')?.textContent ?? '').includes('出错'), 2500), '回合错误显示状态（出错）')
+  assert(await pollFor(() => (document.querySelector('.gv-dialogue-text')?.textContent ?? '').includes('[错误] boom'), 2500), '回合错误显示错误行正文')
+  assert(document.querySelector('.gv-dtext-status') === null, '错误行不再叠加状态行')
   // 恢复静态会话
   window.__setSession({
     sessionId: 'session-1',

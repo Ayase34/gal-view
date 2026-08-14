@@ -525,7 +525,8 @@ export function GalView({ useSession, inputActions, useScene, useHistory, useAss
               onSkip={skipTyping}
               onTextClick={onTextClick}
               hasNextPage={hasNextPage}
-              aiStatus={running ? (showStatusPage ? aiStatus : null) : aiStatus}
+              // 错误行正文已含「[错误] …」：不再叠加「（出错…）」状态行；其余非运行状态照常显示。
+              aiStatus={running ? (showStatusPage ? aiStatus : null) : (currentLine !== null && currentLine.error === true ? null : aiStatus)}
               onAction={handleAction}
               autoOn={auto}
             />
