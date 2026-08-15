@@ -6,14 +6,64 @@
 // 以系统行进入历史。说话人映射（名字/颜色）也在这里。
 
 /**
- * 对话文本清洗：统一换行符；纯空白行视为空行；连续多个空行折叠为一个段落分隔；
- * 去首尾空行。流式与定稿共用同一函数（contentToText/assistantToText 内应用），
- * 避免模型输出成串空行占据文本框空间，且定稿切换时文本不重打。
+ * 剥离常见 Markdown 标记，保留纯文本内容。
+ *
+ * 处理范围：围栏代码块、行内代码、图片、链接（含参考式与自动链接）、
+ * 标题/引用/有序无序列表行首标记、水平分隔线、删除线、粗体与斜体强调。
+ * 不做完整 Markdown 解析——Galgame 台词框只需去掉视觉噪声字符（如 * ` # >）。
+ *
+ * 边界规则：斜体 `*x*`/`_x_` 要求起始符不紧跟空白、结束符不紧贴空白，
+ * 且两侧均不在字母数字内，避免误伤 `2 * 3`、`a*b`、`snake_case`；粗体 `**x**`/`__x__`
+ * 因双符成对无歧义，先用宽松规则剥离再处理斜体。未闭合的标记保持原样（安全）。
+ *
+ * @param {string} text - 原始文本（建议先按 \n 归一换行）。
+ * @returns {string} 去除 Markdown 标记后的纯文本。
+ */
+export function stripMarkdown(text) {
+  if (typeof text !== 'string') return ''
+  return text
+    // 围栏代码块：```lang\n...\n``` → 保留正文（去围栏与语言标识）。
+    .replace(/```[^\n]*\n?([\s\S]*?)\n?```/g, '$1')
+    // 行内代码：`code` → code
+    .replace(/`([^`\n]+)`/g, '$1')
+    // 图片：![alt](url) → alt
+    .replace(/!\[([^\]]*)\]\([^)]*\)/g, '$1')
+    // 链接：[text](url) → text
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
+    // 参考式链接：[text][ref] → text
+    .replace(/\[([^\]]+)\]\[[^\]]*\]/g, '$1')
+    // 自动链接：<scheme:...> → scheme（保留协议头，丢弃尖括号）
+    .replace(/<([a-zA-Z][a-zA-Z0-9+.-]*:[^>\s]+)>/g, '$1')
+    // 标题行首标记：# ## ### ...
+    .replace(/^[ \t]{0,3}#{1,6}[ \t]+/gm, '')
+    // 引用行首标记：> >
+    .replace(/^[ \t]{0,3}>[ \t]?/gm, '')
+    // 有序列表行首标记：1. / 1)
+    .replace(/^[ \t]{0,3}\d+[.)][ \t]+/gm, '')
+    // 无序列表行首标记：- * +
+    .replace(/^[ \t]{0,3}[-*+][ \t]+/gm, '')
+    // 水平分隔线（独占一行：--- *** ___）
+    .replace(/^[ \t]{0,3}([-*_])\1{2,}[ \t]*$/gm, '')
+    // 删除线：~~text~~ → text
+    .replace(/~~([^\n~]+)~~/g, '$1')
+    // 粗体：**text** / __text__ → text（双符成对，先用宽松规则）
+    .replace(/\*\*([^\n*]+)\*\*/g, '$1')
+    .replace(/__([^\n_]+)__/g, '$1')
+    // 斜体 *text* → text：起始符不跟空白、结束符不贴空白，两侧不在字母数字中。
+    .replace(/(?<![A-Za-z0-9*])\*(?!\s|\*)([^\n*]+?\S)\*(?![A-Za-z0-9*])/g, '$1')
+    // 斜体 _text_ → text：同上边界，避免误伤 snake_case。
+    .replace(/(?<![A-Za-z0-9_])_(?!\s|_)([^\n_]+?\S)_(?![A-Za-z0-9_])/g, '$1')
+}
+
+/**
+ * 对话文本清洗：统一换行符；剥离 Markdown 标记；纯空白行视为空行；
+ * 连续多个空行折叠为一个段落分隔；去首尾空行。流式与定稿共用同一函数
+ * （contentToText/assistantToText 内应用），避免模型输出成串空行占据文本框空间，
+ * 且定稿切换时文本不重打。
  */
 export function cleanDialogueText(text) {
   if (typeof text !== 'string') return ''
-  return text
-    .replace(/\r\n?/g, '\n')
+  return stripMarkdown(text.replace(/\r\n?/g, '\n'))
     .replace(/^[ \t]+$/gm, '')
     .replace(/\n{3,}/g, '\n\n')
     .trim()

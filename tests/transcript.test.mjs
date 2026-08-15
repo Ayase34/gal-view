@@ -2,7 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import {
   contentToText, assistantToText, partialToText, lineFromNode, nodesToLines,
-  speakerFor, assistantSpeaker, playerSpeaker, welcomeLine, cleanDialogueText,
+  speakerFor, assistantSpeaker, playerSpeaker, welcomeLine, cleanDialogueText, stripMarkdown,
   playerDisplayName, assistantDisplayName, roleNameElement, partialStatus, deriveStatus,
 } from '../.dsh-plugin/client/transcript.mjs'
 import { defaultScene, normalizeScene } from '../.dsh-plugin/client/scene.mjs'
@@ -110,6 +110,72 @@ test('assistantSpeaker 失效引用回退系统', () => {
   const named = defaultScene()
   named.settings.assistantSpeaker = 'char-b'
   assert.equal(assistantSpeaker(named).name, '雾子')
+})
+
+test('stripMarkdown 剥离行内强调标记', () => {
+  assert.equal(stripMarkdown('*斜体*'), '斜体')
+  assert.equal(stripMarkdown('**粗体**'), '粗体')
+  assert.equal(stripMarkdown('~~删除线~~'), '删除线')
+  assert.equal(stripMarkdown('`代码`'), '代码')
+  assert.equal(stripMarkdown('_斜体_'), '斜体')
+  assert.equal(stripMarkdown('__粗体__'), '粗体')
+  // 混排：粗体 + 斜体共存
+  assert.equal(stripMarkdown('**粗体** 和 *斜体*'), '粗体 和 斜体')
+  // 未闭合标记保持原样（安全）
+  assert.equal(stripMarkdown('*未闭合'), '*未闭合')
+  assert.equal(stripMarkdown('**未闭合'), '**未闭合')
+})
+
+test('stripMarkdown 不误伤非强调用法', () => {
+  // 数学乘法（带空格）不剥离
+  assert.equal(stripMarkdown('2 * 3 = 6'), '2 * 3 = 6')
+  assert.equal(stripMarkdown('a * b * c'), 'a * b * c')
+  // 词内星号不剥离
+  assert.equal(stripMarkdown('a*b*c'), 'a*b*c')
+  // snake_case 不剥离
+  assert.equal(stripMarkdown('snake_case_var'), 'snake_case_var')
+  assert.equal(stripMarkdown('foo_bar 与 baz_qux'), 'foo_bar 与 baz_qux')
+  // 行首单独 * 作为列表项才剥离
+  assert.equal(stripMarkdown('* 列表项'), '列表项')
+})
+
+test('stripMarkdown 剥离行首结构与块级标记', () => {
+  assert.equal(stripMarkdown('# 标题'), '标题')
+  assert.equal(stripMarkdown('## 二级标题'), '二级标题')
+  assert.equal(stripMarkdown('> 引用'), '引用')
+  assert.equal(stripMarkdown('- 无序项'), '无序项')
+  assert.equal(stripMarkdown('+ 加号项'), '加号项')
+  assert.equal(stripMarkdown('1. 有序项'), '有序项')
+  assert.equal(stripMarkdown('2) 有序项'), '有序项')
+  // 多行列表：逐行剥离行首标记
+  assert.equal(stripMarkdown('* 一\n* 二\n* 三'), '一\n二\n三')
+})
+
+test('stripMarkdown 剥离链接与图片', () => {
+  assert.equal(stripMarkdown('[链接文本](https://example.com)'), '链接文本')
+  assert.equal(stripMarkdown('![替代文本](https://example.com/a.png)'), '替代文本')
+  assert.equal(stripMarkdown('前文 [链接](url) 后文'), '前文 链接 后文')
+  assert.equal(stripMarkdown('[参考][ref1]'), '参考')
+  assert.equal(stripMarkdown('<https://example.com>'), 'https://example.com')
+})
+
+test('stripMarkdown 剥离代码块围栏', () => {
+  assert.equal(stripMarkdown('```js\nconsole.log(1)\n```'), 'console.log(1)')
+  assert.equal(stripMarkdown('```\n纯文本代码\n```'), '纯文本代码')
+})
+
+test('stripMarkdown 剥离水平分隔线', () => {
+  assert.equal(stripMarkdown('上文\n---\n下文'), '上文\n\n下文')
+  assert.equal(stripMarkdown('上文\n***\n下文'), '上文\n\n下文')
+})
+
+test('cleanDialogueText 剥离 Markdown 标记后正常清洗', () => {
+  assert.equal(cleanDialogueText('**你好**，世界'), '你好，世界')
+  assert.equal(cleanDialogueText('这是 *斜体* 内容'), '这是 斜体 内容') // 行中斜体剥离
+  assert.equal(cleanDialogueText('# 标题\n正文'), '标题\n正文')
+  assert.equal(cleanDialogueText('- 项一\n- 项二'), '项一\n项二')
+  assert.equal(cleanDialogueText('[link](url) 文本'), 'link 文本')
+  assert.equal(cleanDialogueText(null), '')
 })
 
 test('cleanDialogueText 折叠成串空行并去首尾空行', () => {
