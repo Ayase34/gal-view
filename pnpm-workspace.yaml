@@ -3,3 +3,7 @@ packages:
 
 allowBuilds:
   esbuild: false
+
+trustPolicy: no-downgrade
+blockExoticSubdeps: true
+minimumReleaseAge: 10080
