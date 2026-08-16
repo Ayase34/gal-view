@@ -6,13 +6,47 @@
 // 以系统行进入历史。说话人映射（名字/颜色）也在这里。
 
 /**
- * 对话文本清洗：统一换行符；纯空白行视为空行；连续多个空行折叠为一个段落分隔；
- * 去首尾空行。流式与定稿共用同一函数（contentToText/assistantToText 内应用），
- * 避免模型输出成串空行占据文本框空间，且定稿切换时文本不重打。
+ * 剥离 Markdown 语法标记（只去标记、保留正文；不触碰正常标点与数学符号）：
+ * 代码围栏、图片、链接、加粗、删除线、斜体、行内代码、标题、引用、分割线、列表序号。
+ */
+export function stripMarkdown(text) {
+  if (typeof text !== 'string') return ''
+  return text
+    // 代码围栏：去掉 ``` 行与语言标记，保留内部内容
+    .replace(/^```[^\n]*$/gm, '')
+    // 图片：![...](...) 无正文可显示，整体移除
+    .replace(/!\[[^\]\n]*\]\([^)\n]*\)/g, '')
+    // 链接：[文字](url) → 文字
+    .replace(/\[([^\]\n]+)\]\([^)\n]*\)/g, '$1')
+    // 加粗 **text** → text
+    .replace(/\*\*([^*\n]+)\*\*/g, '$1')
+    // 删除线 ~~text~~ → text
+    .replace(/~~([^~\n]+)~~/g, '$1')
+    // 斜体 *text* → text（前后守卫：不吞掉 2*3、孤星号等正常字符）
+    .replace(/(^|[^*\w])\*([^*\n]+?)\*(?!\*)(?![*\w])/g, '$1$2')
+    // 行内代码 `text` → text
+    .replace(/`([^`\n]+)`/g, '$1')
+    // 标题：# / ## / … → 去掉井号
+    .replace(/^#{1,6}[ \t]+/gm, '')
+    // 引用：行首 > → 去掉
+    .replace(/^>[ \t]?/gm, '')
+    // 分割线：--- / *** / ___ → 去掉
+    .replace(/^[ \t]*(?:-{3,}|\*{3,}|_{3,})[ \t]*$/gm, '')
+    // 无序列表标记：行首 - / * / + → 去掉
+    .replace(/^[-*+][ \t]+/gm, '')
+    // 有序列表标记：行首 1. / 2. → 去掉
+    .replace(/^\d+\.[ \t]+/gm, '')
+}
+
+/**
+ * 对话文本清洗：先剥离 Markdown 标记，再统一换行符；纯空白行视为空行；
+ * 连续多个空行折叠为一个段落分隔；去首尾空行。流式与定稿共用同一函数
+ * （contentToText/assistantToText 内应用），避免模型输出的 Markdown 语法与成串
+ * 空行占据文本框空间，且定稿切换时文本不重打。
  */
 export function cleanDialogueText(text) {
   if (typeof text !== 'string') return ''
-  return text
+  return stripMarkdown(text)
     .replace(/\r\n?/g, '\n')
     .replace(/^[ \t]+$/gm, '')
     .replace(/\n{3,}/g, '\n\n')

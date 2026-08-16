@@ -4,6 +4,7 @@ import {
   contentToText, assistantToText, partialToText, lineFromNode, nodesToLines,
   speakerFor, assistantSpeaker, playerSpeaker, welcomeLine, cleanDialogueText,
   playerDisplayName, assistantDisplayName, roleNameElement, partialStatus, deriveStatus,
+  stripMarkdown,
 } from '../.dsh-plugin/client/transcript.mjs'
 import { defaultScene, normalizeScene } from '../.dsh-plugin/client/scene.mjs'
 
@@ -110,6 +111,17 @@ test('assistantSpeaker 失效引用回退系统', () => {
   const named = defaultScene()
   named.settings.assistantSpeaker = 'char-b'
   assert.equal(assistantSpeaker(named).name, '雾子')
+})
+
+test('stripMarkdown 剥离标记但保留正文与正常标点', () => {
+  assert.equal(stripMarkdown('**你好**，这是*斜体*和`代码`，还有~~删除线~~。'), '你好，这是斜体和代码，还有删除线。')
+  assert.equal(stripMarkdown('# 标题\n正文。\n## 二级\n> 引用\n- 列表一\n* 列表二\n1. 第一点\n2. 第二点'), '标题\n正文。\n二级\n引用\n列表一\n列表二\n第一点\n第二点')
+  assert.equal(stripMarkdown('看[链接](https://example.com)与![图](a.png)'), '看链接与')
+  assert.equal(stripMarkdown('```js\nconst x = 1\n```\n后续'), '\nconst x = 1\n\n后续')
+  // 正常标点/数学符号不误伤：。！？，、；：（）「」『』……—— · 2*3 星号
+  assert.equal(stripMarkdown('。！？，、；：（）「」『』……——·~*2*3=6 100%'), '。！？，、；：（）「」『』……——·~*2*3=6 100%')
+  assert.equal(stripMarkdown('——破折号开头\n---\n再一行'), '——破折号开头\n\n再一行')
+  assert.equal(stripMarkdown(null), '')
 })
 
 test('cleanDialogueText 折叠成串空行并去首尾空行', () => {
