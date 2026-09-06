@@ -1,5 +1,6 @@
 /** GAL 视窗顶层：模式切换 + 游戏模式（舞台/控制条/输入/历史/设置）+ 编辑模式。
- * 数据来源：useSession（会话快照 nodes/partial/running/blank）、useScene（场景）、
+ * 数据来源：useChat（对话快照 legacy nodes/partial/runningCalls）、
+ * useSession（会话生命周期 running/blank/pending/promptError）、useScene（场景）、
  * inputActions（发送走宿主输入机，与普通输入框同一管线）。
  */
 
@@ -152,19 +153,19 @@ function useFillSessionArea(rootRef) {
 
 /**
  * GAL 视窗组件（conversation.view 槽位条目）。
- * @param props - 槽位框架注入：sessionId/useSession/useInput/inputActions + inject 面的 useScene/useHistory/api。
+ * @param props - 槽位框架注入：sessionId/useSession/useChat/useInput/inputActions + inject 面的 useScene/useHistory/api。
  */
-export function GalView({ useSession, inputActions, useScene, useHistory, useAssets, useFonts, useStore, actions, api }) {
+export function GalView({ useSession, useChat, inputActions, useScene, useHistory, useAssets, useFonts, useStore, actions, api }) {
   const scene = useScene(s => s)
   const history = useHistory(h => h)
   const assets = useAssets(a => a)
   const fonts = useFonts(f => f)
   const readState = useStore(s => s)
-  const nodes = useSession(s => s.nodes)
-  const partial = useSession(s => s.partial)
+  const nodes = useChat(s => s.legacy.nodes)
+  const partial = useChat(s => s.legacy.partial)
+  const runningCalls = useChat(s => s.legacy.runningCalls)
   const running = useSession(s => s.running)
   const blank = useSession(s => s.blank)
-  const runningCalls = useSession(s => s.runningCalls)
   const pending = useSession(s => s.pending)
   const promptError = useSession(s => s.promptError)
 

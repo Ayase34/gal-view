@@ -108,23 +108,40 @@ async function pageTestPhase1() {
   const sessionState = {
     current: {
       sessionId: 'session-1',
-      nodes: [
-        { kind: 'user', seq: 1, content: [{ type: 'text', text: '你好' }], source: null },
-        { kind: 'assistant', seq: 2, turn: 1, step: 1, blocks: [{ kind: 'text', text: '……你终于来了。欢迎回来。' }] },
-      ],
-      partial: null,
       running: false,
       blank: false,
+      pending: [],
+      promptError: null,
+    },
+  }
+  const chatState = {
+    current: {
+      legacy: {
+        nodes: [
+          { kind: 'user', seq: 1, content: [{ type: 'text', text: '你好' }], source: null },
+          { kind: 'assistant', seq: 2, turn: 1, step: 1, blocks: [{ kind: 'text', text: '……你终于来了。欢迎回来。' }] },
+        ],
+        partial: null,
+        runningCalls: [],
+      },
     },
   }
   const sessionListeners = new Set()
+  const chatListeners = new Set()
   const sessionSource = {
     getSnapshot: () => sessionState.current,
     subscribe(fn) { sessionListeners.add(fn); return () => { sessionListeners.delete(fn) } },
   }
+  const chatSource = {
+    getSnapshot: () => chatState.current,
+    subscribe(fn) { chatListeners.add(fn); return () => { chatListeners.delete(fn) } },
+  }
   window.__setSession = next => {
-    sessionState.current = next
+    const { nodes = [], partial = null, runningCalls = [], ...session } = next
+    sessionState.current = session
+    chatState.current = { legacy: { nodes, partial, runningCalls } }
     for (const fn of [...sessionListeners]) fn()
+    for (const fn of [...chatListeners]) fn()
   }
 
   const React = window.React
@@ -142,6 +159,7 @@ async function pageTestPhase1() {
   const props = {
     sessionId: 'session-1',
     useSession: bindHook(sessionSource),
+    useChat: bindHook(chatSource),
     useInput: bindHook({ getSnapshot: () => ({ draft: '' }), subscribe: () => () => {} }),
     inputActions,
     useScene: bindHook(sceneSource),
