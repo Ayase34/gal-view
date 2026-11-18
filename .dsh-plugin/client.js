@@ -2678,19 +2678,20 @@ function useFillSessionArea(rootRef) {
     };
   }, [rootRef]);
 }
-function GalView({ useSession, inputActions, useScene, useHistory, useAssets, useFonts, useStore, actions, api }) {
+function GalView({ useSession, useConversation, inputActions, useScene, useHistory, useAssets, useFonts, useStore, actions, api }) {
   const scene = useScene((s) => s);
   const history = useHistory((h) => h);
   const assets = useAssets((a) => a);
   const fonts = useFonts((f) => f);
   const readState = useStore((s) => s);
-  const nodes = useSession((s) => s.nodes);
-  const partial = useSession((s) => s.partial);
   const running = useSession((s) => s.running);
   const blank = useSession((s) => s.blank);
-  const runningCalls = useSession((s) => s.runningCalls);
-  const pending = useSession((s) => s.pending);
   const promptError = useSession((s) => s.promptError);
+  const chat = useConversation((c) => c.views.get("chat"));
+  const nodes = chat?.legacy.nodes ?? [];
+  const partial = chat?.legacy.partial ?? null;
+  const runningCalls = chat?.legacy.runningCalls ?? [];
+  const pending = [];
   const [mode, setMode] = (0, import_react3.useState)("game");
   const [auto, setAuto] = (0, import_react3.useState)(false);
   const [historyOpen, setHistoryOpen] = (0, import_react3.useState)(false);

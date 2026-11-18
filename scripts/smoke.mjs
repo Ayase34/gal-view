@@ -105,29 +105,67 @@ async function pageTestPhase1() {
   window.__galHistory = historySource
   window.__disposers = disposers
 
+  // 生命周期/控制在 useSession;对话内容在 useConversation 的 chat 目标 legacy 切片。
   const sessionState = {
-    current: {
-      sessionId: 'session-1',
-      nodes: [
-        { kind: 'user', seq: 1, content: [{ type: 'text', text: '你好' }], source: null },
-        { kind: 'assistant', seq: 2, turn: 1, step: 1, blocks: [{ kind: 'text', text: '……你终于来了。欢迎回来。' }] },
-      ],
-      partial: null,
-      running: false,
-      blank: false,
-    },
+    current: { sessionId: 'session-1', running: false, blank: false, promptError: null },
+  }
+  const EMPTY_CHAT = { legacy: { nodes: [], partial: null, runningCalls: [] } }
+  const conversationState = {
+    current: { views: { get: () => EMPTY_CHAT } },
   }
   const sessionListeners = new Set()
+  const conversationListeners = new Set()
   const sessionSource = {
     getSnapshot: () => sessionState.current,
     subscribe(fn) { sessionListeners.add(fn); return () => { sessionListeners.delete(fn) } },
   }
+  const conversationSource = {
+    getSnapshot: () => conversationState.current,
+    subscribe(fn) { conversationListeners.add(fn); return () => { conversationListeners.delete(fn) } },
+  }
   window.__setSession = next => {
-    sessionState.current = next
+    // 测试用例仍以顶层 nodes/partial/runningCalls 描述会话内容:拆分到两个来源。
+    sessionState.current = {
+      sessionId: next.sessionId ?? 'session-1',
+      running: next.running ?? false,
+      blank: next.blank ?? false,
+      promptError: next.promptError ?? null,
+    }
+    // 稳定引用:宿主 views.get('chat') 返回最近一次发布的快照对象,选择器须可缓存。
+    conversationState.current = {
+      views: {
+        get: (() => {
+          let cached = { legacy: { nodes: [], partial: null, runningCalls: [] } }
+          return () => {
+            const want = {
+              legacy: {
+                nodes: next.nodes ?? [],
+                partial: next.partial ?? null,
+                runningCalls: next.runningCalls ?? [],
+              },
+            }
+            if (JSON.stringify(want) !== JSON.stringify(cached)) cached = want
+            return cached
+          }
+        })(),
+      },
+    }
     for (const fn of [...sessionListeners]) fn()
+    for (const fn of [...conversationListeners]) fn()
   }
 
   const React = window.React
+  // 初始会话:一条玩家 + 一条助手台词(拆分写入 session/conversation 两个来源)。
+  window.__setSession({
+    sessionId: 'session-1',
+    nodes: [
+      { kind: 'user', seq: 1, content: [{ type: 'text', text: '你好' }], source: null },
+      { kind: 'assistant', seq: 2, turn: 1, step: 1, blocks: [{ kind: 'text', text: '……你终于来了。欢迎回来。' }] },
+    ],
+    partial: null,
+    running: false,
+    blank: false,
+  })
   const bindHook = src => sel => React.useSyncExternalStore(src.subscribe, () => sel(src.getSnapshot()))
   const readStoreInstance = registered.options.store.create('session-1')
   const drafts = []
@@ -142,6 +180,7 @@ async function pageTestPhase1() {
   const props = {
     sessionId: 'session-1',
     useSession: bindHook(sessionSource),
+    useConversation: bindHook(conversationSource),
     useInput: bindHook({ getSnapshot: () => ({ draft: '' }), subscribe: () => () => {} }),
     inputActions,
     useScene: bindHook(sceneSource),
@@ -901,6 +940,8 @@ async function main() {
     const cache = join(process.env.LOCALAPPDATA ?? process.env.USERPROFILE ?? '', 'ms-playwright')
     const candidates = [
       join(cache, 'chromium_headless_shell-1228', 'chrome-headless-shell-win64', 'chrome-headless-shell.exe'),
+      join(cache, 'chromium_headless_shell-1223', 'chrome-headless-shell-win64', 'chrome-headless-shell.exe'),
+      join(cache, 'chromium-1223', 'chrome-win64', 'chrome.exe'),
       join(cache, 'chromium-1208', 'chrome-win64', 'chrome.exe'),
       join(cache, 'chromium_headless_shell-1208', 'chrome-headless-shell-win64', 'chrome-headless-shell.exe'),
     ]

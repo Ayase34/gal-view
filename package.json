@@ -30,7 +30,9 @@
   },
   "devDependencies": {
     "@esbuild/win32-x64": "0.28.2",
-    "esbuild": "^0.28.1"
+    "esbuild": "^0.28.1",
+    "playwright": "^1.65.1",
+    "playwright-core": "^1.65.1"
   },
   "license": "MIT"
 }

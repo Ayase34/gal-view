@@ -152,21 +152,25 @@ function useFillSessionArea(rootRef) {
 
 /**
  * GAL 视窗组件（conversation.view 槽位条目）。
- * @param props - 槽位框架注入：sessionId/useSession/useInput/inputActions + inject 面的 useScene/useHistory/api。
+ * @param props - 槽位框架注入：sessionId/useSession/useConversation/useInput/inputActions + inject 面的 useScene/useHistory/api。
  */
-export function GalView({ useSession, inputActions, useScene, useHistory, useAssets, useFonts, useStore, actions, api }) {
+export function GalView({ useSession, useConversation, inputActions, useScene, useHistory, useAssets, useFonts, useStore, actions, api }) {
   const scene = useScene(s => s)
   const history = useHistory(h => h)
   const assets = useAssets(a => a)
   const fonts = useFonts(f => f)
   const readState = useStore(s => s)
-  const nodes = useSession(s => s.nodes)
-  const partial = useSession(s => s.partial)
+  // 生命周期/控制状态在 useSession;对话内容(nodes/partial/runningCalls)在
+  // useConversation 的 chat 目标快照的 legacy 兼容切片(旧版曾在 useSession 顶层)。
   const running = useSession(s => s.running)
   const blank = useSession(s => s.blank)
-  const runningCalls = useSession(s => s.runningCalls)
-  const pending = useSession(s => s.pending)
   const promptError = useSession(s => s.promptError)
+  const chat = useConversation(c => c.views.get('chat'))
+  const nodes = chat?.legacy.nodes ?? []
+  const partial = chat?.legacy.partial ?? null
+  const runningCalls = chat?.legacy.runningCalls ?? []
+  // 待回应互动不在本切片:本视图无批准/提问 UI,恒为空。
+  const pending = []
 
   const [mode, setMode] = useState('game')
   const [auto, setAuto] = useState(false)
